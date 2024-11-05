@@ -2,25 +2,186 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amigo Invisible - Registro de Equipos</title>
+    <title>🇪🇸 LIGA COGNATIS - Selección de Equipos</title>
+    <style>
+        /* Estilo general */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #333;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        /* Contenedor principal */
+        .container {
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        /* Campo de búsqueda */
+        #search {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        /* Lista de equipos */
+        .team-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .team-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .team-item:hover {
+            background-color: #f0f0f5;
+        }
+
+        .team-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 10%;
+            margin-right: 10px;
+        }
+
+        /* Equipo seleccionado */
+        .selected-team {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #555;
+        }
+
+        /* Botón de envío */
+        #submitButton {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            display: none;
+        }
+
+        #submitButton:hover {
+            background-color: #0056b3;
+        }
+
+        /* Mensajes de éxito y error */
+        #message {
+            text-align: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        #message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        #message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
 </head>
 <body>
-    <h1>Amigo Invisible - Registro de Equipos de Fútbol</h1>
-    <form method="post">
-        <label for="equipo">Nombre del equipo:</label>
-        <input type="text" id="equipo" name="equipo" required>
-        <button type="submit">Registrar equipo</button>
-    </form>
+    <div class="container">
+        <h1>🇪🇸 LIGA COGNATIS - Selecciona un equipo</h1>
 
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <ul>
-                {% for message in messages %}
-                    <li>{{ message }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
-    {% endwith %}
+        <!-- Mostrar mensaje de éxito/error arriba de la lista -->
+        {% with messages = get_flashed_messages(with_categories=True) %}
+            {% if messages %}
+                <div id="message" class="{{ messages[0][0] }}">
+                    {{ messages[0][1] }}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Campo de búsqueda para filtrar equipos -->
+        <input type="text" id="search" placeholder="Buscar equipo..." onkeyup="filtrarEquipos()">
+
+
+        <!-- Mostrar equipo seleccionado y botón de envío -->
+        <div id="selectedTeamDisplay" class="selected-team"></div>
+        <form id="teamForm" method="POST" action="{{ url_for('seleccionar_equipo') }}">
+            <input type="hidden" id="equipo_id" name="equipo_id">
+            <button type="submit" id="submitButton">Enviar selección</button>
+        </form>
+
+        <!-- Lista completa de equipos y selecciones (controlada por JavaScript) -->
+        <ul id="teamList" class="team-list">
+            {% for club in club_data %}
+                <li class="team-item" onclick="seleccionarEquipo({{ club['ID'] }}, '{{ club['Name'] }}')">
+                    <img src="{{ url_for('static', filename='images/club_logos/' + club['ID'] + '.png') }}" alt="{{ club['Name'] }}" class="team-logo">
+                    <span>{{ club['Name'] }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <script>
+        // Función de filtrado en tiempo real
+        function filtrarEquipos() {
+            const searchTerm = document.getElementById('search').value.toLowerCase();
+            const teamItems = document.querySelectorAll('.team-item');
+            let displayed = 0;
+
+            teamItems.forEach(item => {
+                const teamName = item.querySelector('span').textContent.toLowerCase();
+                const match = teamName.includes(searchTerm);
+
+                // Mostrar solo los primeros 10 equipos coincidentes
+                item.style.display = match && displayed < 10 ? 'flex' : 'none';
+                if (match) displayed++;
+            });
+        }
+
+        // Función para seleccionar un equipo
+        function seleccionarEquipo(equipoID, equipoName) {
+            document.getElementById('equipo_id').value = equipoID;
+            document.getElementById('selectedTeamDisplay').textContent = `Equipo seleccionado: ${equipoName}`;
+            document.getElementById('submitButton').style.display = 'block';
+        }
+
+        // Mostrar solo los primeros 10 equipos al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            filtrarEquipos();
+        });
+    </script>
 </body>
 </html>

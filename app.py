@@ -1,44 +1,66 @@
-from flask import Flask, request, render_template, redirect, url_for, flash
+from flask import Flask, request, render_template, redirect, url_for, flash, jsonify
 import json
 import os
 
 app = Flask(__name__)
-app.secret_key = 'ligacognatis'  # Cambia esto a algo más seguro
+app.secret_key = 'clave-secreta-para-flask'
 
-DATA_FILE = 'equipos.json'
+# Cargar datos de los equipos y selecciones desde el JSON
+with open('soccerWiki.json', 'r',
+          encoding='utf-8') as f:
+    data = json.load(f)
+    club_data = data.get('ClubData', [])
+    international_data = data.get('InternationalData', [])
 
-# Inicializar archivo si no existe
+# Añadir el prefijo "Selección:" a los nombres de las selecciones y convertir el ID a string
+for nation in international_data:
+    nation['Name'] = f"Selección: {nation['Name']}"
+    nation['ID'] = str(nation['ID'])  # Convertir ID a string
+
+for club in club_data:
+    club['ID'] = str(club['ID'])  # Convertir ID a string
+
+# Unificar listas de clubes y selecciones
+all_teams = club_data + international_data
+
+DATA_FILE = 'selected_teams.json'
+
+# Inicializar archivo de equipos seleccionados si no existe
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, 'w') as f:
         json.dump([], f)
 
-def cargar_equipos():
+
+def cargar_equipos_seleccionados():
     with open(DATA_FILE, 'r') as f:
         return json.load(f)
 
-def guardar_equipo(equipo):
-    equipos = cargar_equipos()
-    equipos.append(equipo)
+
+def guardar_equipo_seleccionado(equipo_id):
+    equipos_seleccionados = cargar_equipos_seleccionados()
+    equipos_seleccionados.append(equipo_id)
     with open(DATA_FILE, 'w') as f:
-        json.dump(equipos, f)
+        json.dump(equipos_seleccionados, f)
 
-def equipo_existe(equipo):
-    equipos = cargar_equipos()
-    return equipo in equipos
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 def index():
-    if request.method == 'POST':
-        equipo = request.form.get('equipo').strip()
+    return render_template('index.html', club_data=all_teams)  # Mostrar solo los primeros 10 elementos
 
-        if equipo_existe(equipo):
-            flash('Este equipo ya ha sido elegido. Por favor, elige otro.')
-        else:
-            guardar_equipo(equipo)
-            flash(f'¡El equipo {equipo} ha sido registrado exitosamente!')
-        return redirect(url_for('index'))
 
-    return render_template('index.html')
+@app.route('/seleccionar-equipo', methods=['POST'])
+def seleccionar_equipo():
+    equipo_id = int(request.form.get('equipo_id'))
+    equipos_seleccionados = cargar_equipos_seleccionados()
+
+    if equipo_id in equipos_seleccionados:
+        flash('Este equipo ya ha sido seleccionado. Por favor, elige otro.', 'error')
+    else:
+        guardar_equipo_seleccionado(equipo_id)
+        flash('¡El equipo ha sido registrado exitosamente!', 'success')
+
+    return redirect(url_for('index'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
