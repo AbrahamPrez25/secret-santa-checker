@@ -2,7 +2,9 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🇪🇸 LIGA COGNATIS - Selección de Equipos</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
     <style>
         /* Estilo general */
         body {
@@ -14,6 +16,7 @@
             min-height: 100vh;
             margin: 0;
             color: #333;
+            padding: 0 10px;
         }
 
         h1 {
@@ -117,12 +120,56 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+
+        /* Estilo responsive para pantallas pequeñas */
+        @media (max-width: 600px) {
+            body {
+                padding: 0 5px;
+            }
+
+            .container {
+                padding: 15px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            h2 {
+                font-size: 1em;
+            }
+            #search {
+                font-size: 14px;
+            }
+
+            .team-item {
+                flex-direction: column; /* Para apilar logo y nombre en pantallas pequeñas */
+                align-items: center;
+                text-align: center;
+            }
+
+            .team-logo {
+                width: 50px;
+                height: 50px;
+                margin: 0 0 5px 0;
+            }
+
+            .selected-team {
+                font-size: 14px;
+            }
+
+            #submitButton {
+                font-size: 14px;
+                padding: 8px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🇪🇸 LIGA COGNATIS - Selecciona un equipo</h1>
-
+        <h1>🇪🇸 LIGA COGNATIS</h1>
+        <h2>Selecciona un equipo</h2>
         <!-- Mostrar mensaje de éxito/error arriba de la lista -->
         {% with messages = get_flashed_messages(with_categories=True) %}
             {% if messages %}
@@ -155,8 +202,19 @@
     </div>
 
     <script>
+        let maxVisibleItems = 10; // Valor inicial que se actualizará
+
+        // Calcula el número de elementos que caben en pantalla
+        function calcularMaxVisibleItems() {
+            const containerHeight = document.querySelector('.container').clientHeight;
+            const itemHeight = document.querySelector('.team-item').clientHeight;
+            const searchHeight = document.getElementById('search').clientHeight;
+            maxVisibleItems = Math.max(1,Math.floor((window.innerHeight - searchHeight - 100) / itemHeight)-2);
+        }
+
         // Función de filtrado en tiempo real
         function filtrarEquipos() {
+            calcularMaxVisibleItems();
             const searchTerm = document.getElementById('search').value.toLowerCase();
             const teamItems = document.querySelectorAll('.team-item');
             let displayed = 0;
@@ -165,8 +223,8 @@
                 const teamName = item.querySelector('span').textContent.toLowerCase();
                 const match = teamName.includes(searchTerm);
 
-                // Mostrar solo los primeros 10 equipos coincidentes
-                item.style.display = match && displayed < 10 ? 'flex' : 'none';
+                // Mostrar solo los primeros elementos que caben en la pantalla
+                item.style.display = match && displayed < maxVisibleItems ? 'flex' : 'none';
                 if (match) displayed++;
             });
         }
@@ -180,6 +238,13 @@
 
         // Mostrar solo los primeros 10 equipos al cargar la página
         document.addEventListener('DOMContentLoaded', () => {
+            calcularMaxVisibleItems();
+            filtrarEquipos();
+        });
+
+        // Recalcula el número de elementos visibles cuando la ventana se redimensiona
+        window.addEventListener('resize', () => {
+            calcularMaxVisibleItems();
             filtrarEquipos();
         });
     </script>
