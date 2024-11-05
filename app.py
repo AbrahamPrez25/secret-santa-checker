@@ -3,6 +3,7 @@ import json
 import os
 
 app = Flask(__name__)
+app.config['JSON_AS_ASCII'] = False
 app.secret_key = 'clave-secreta-para-flask'
 
 # Cargar datos de los equipos y selecciones desde el JSON
