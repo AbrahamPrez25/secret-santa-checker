@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🇪🇸 LIGA COGNATIS - Selección de Equipos</title>
+    <title>LIGA COGNATIS - Selección de Equipos</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
     <style>
         /* Estilo general */
@@ -32,6 +32,7 @@
             background-color: #fff;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             border-radius: 8px;
+            box-sizing: border-box;
         }
 
         /* Campo de búsqueda */
@@ -42,6 +43,7 @@
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 16px;
+            box-sizing: border-box;
         }
 
         /* Lista de equipos */
@@ -49,6 +51,8 @@
             list-style-type: none;
             padding: 0;
             margin: 0;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .team-item {
@@ -62,6 +66,12 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             cursor: pointer;
             transition: background-color 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        .team-item.selected {
+            background-color: #9dd9ff;  /* Fondo azul claro */
+            border: 2px solid #007bff;  /* Borde azul */
         }
 
         .team-item:hover {
@@ -95,6 +105,7 @@
             cursor: pointer;
             transition: background-color 0.3s ease;
             display: none;
+            box-sizing: border-box;
         }
 
         #submitButton:hover {
@@ -212,15 +223,20 @@
             maxVisibleItems = Math.max(1,Math.floor((window.innerHeight - searchHeight - 100) / itemHeight)-2);
         }
 
+        // Función para eliminar tildes de una cadena
+        function removeDiacritics(text) {
+            return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        }
+
         // Función de filtrado en tiempo real
         function filtrarEquipos() {
             calcularMaxVisibleItems();
-            const searchTerm = document.getElementById('search').value.toLowerCase();
+            const searchTerm = removeDiacritics(document.getElementById('search').value.trim().toLowerCase());
             const teamItems = document.querySelectorAll('.team-item');
             let displayed = 0;
 
             teamItems.forEach(item => {
-                const teamName = item.querySelector('span').textContent.toLowerCase();
+                const teamName = removeDiacritics(item.querySelector('span').textContent.toLowerCase());
                 const match = teamName.includes(searchTerm);
 
                 // Mostrar solo los primeros elementos que caben en la pantalla
@@ -231,6 +247,18 @@
 
         // Función para seleccionar un equipo
         function seleccionarEquipo(equipoID, equipoName) {
+            // Quitar la clase 'selected' de cualquier elemento previamente seleccionado
+            const previouslySelected = document.querySelector('.team-item.selected');
+            if (previouslySelected) {
+                previouslySelected.classList.remove('selected');
+            }
+
+            // Añadir la clase 'selected' al equipo actualmente seleccionado
+            const selectedItem = document.querySelector(`.team-item[onclick="seleccionarEquipo(${equipoID}, '${equipoName}')"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('selected');
+            }
+
             document.getElementById('equipo_id').value = equipoID;
             document.getElementById('selectedTeamDisplay').textContent = `Equipo seleccionado: ${equipoName}`;
             document.getElementById('submitButton').style.display = 'block';
