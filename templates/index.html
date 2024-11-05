@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amigo Invisible - Registro de Equipos</title>
+</head>
+<body>
+    <h1>Amigo Invisible - Registro de Equipos de Fútbol</h1>
+    <form method="post">
+        <label for="equipo">Nombre del equipo:</label>
+        <input type="text" id="equipo" name="equipo" required>
+        <button type="submit">Registrar equipo</button>
+    </form>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+</body>
+</html>
