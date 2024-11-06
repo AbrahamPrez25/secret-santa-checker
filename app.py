@@ -51,7 +51,7 @@ def index():
 
 @app.route('/seleccionar-equipo', methods=['POST'])
 def seleccionar_equipo():
-    equipo_id = int(request.form.get('equipo_id'))
+    equipo_id = request.form.get('equipo_id')
     equipos_seleccionados = cargar_equipos_seleccionados()
 
     if equipo_id in equipos_seleccionados:

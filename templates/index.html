@@ -207,8 +207,8 @@
         <!-- Lista completa de equipos y selecciones (controlada por JavaScript) -->
         <ul id="teamList" class="team-list">
             {% for club in club_data %}
-                <li class="team-item" onclick="seleccionarEquipo({{ club['ID'] }}, '{{ club['Name'] }}')">
-                    <img src="{{ url_for('static', filename='images/club_logos/' + club['ID'] + '.png') }}" alt="{{ club['Name'] }}" class="team-logo">
+                <li class="team-item" onclick="seleccionarEquipo('{{ club['ID'] }}', '{{ club['Name'] }}')">
+                    <img src="{{ url_for('static', filename='images/club_logos/' + club['ID'] + '.png') }}" alt="{{ club['Name'] }}" class="team-logo" loading="lazy">
                     <span>{{ club['Name'] }}</span>
                 </li>
             {% endfor %}
@@ -257,7 +257,7 @@
             }
 
             // Añadir la clase 'selected' al equipo actualmente seleccionado
-            const selectedItem = document.querySelector(`.team-item[onclick="seleccionarEquipo(${equipoID}, '${equipoName}')"]`);
+            const selectedItem = document.querySelector(`.team-item[onclick="seleccionarEquipo('${equipoID}', '${equipoName}')"]`);
             if (selectedItem) {
                 selectedItem.classList.add('selected');
             }
