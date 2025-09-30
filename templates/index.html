@@ -96,6 +96,37 @@
             color: #555;
         }
 
+        .user-row{
+          display:flex; align-items:center; justify-content:center;
+          gap:10px; margin:6px 0 4px 0; flex-wrap:wrap;
+        }
+        .user-info{ color:#555; font-size:14px; }
+        .selected-info{ color:#333; font-size:14px; }
+
+        .profile-menu{ position:relative; }
+        .profile-btn{
+          background:transparent; border:none; padding:4px; cursor:pointer;
+          border-radius:50%;
+        }
+        .profile-btn:hover{ background:#f0f0f5; }
+        .profile-btn:focus{ outline:2px solid #007bff33; }
+
+        .menu{
+          position:absolute; top:calc(100% + 6px); right:0;
+          min-width:190px; background:#fff; border:1px solid #ddd; border-radius:8px;
+          box-shadow:0 8px 24px rgba(0,0,0,.12); padding:6px; z-index:1000;
+        }
+        .menu-item,
+        .menu .as-button{
+          display:block; width:100%; text-align:left;
+          padding:8px 12px; border-radius:6px; text-decoration:none; color:#333;
+          background:none; border:none; cursor:pointer; font:inherit;
+        }
+        .menu-item:hover,
+        .menu .as-button:hover{ background:#f4f4f9; }
+        .menu-item-form{ margin:0; }
+
+
         /* Botón de envío */
         #submitButton {
             width: 100%;
@@ -116,25 +147,35 @@
         }
 
         /* Mensajes de éxito y error */
-        #message {
+        .message {
             text-align: center;
             margin-bottom: 15px;
             padding: 10px;
             border-radius: 4px;
         }
 
-        #message.success {
+        .message.success {
             background-color: #d4edda;
             color: #155724;
             border: 1px solid #c3e6cb;
         }
 
-        #message.error {
+        .message.error {
             background-color: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
 
+        .message.confirm {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+        .message.confirm form{ display:inline-block; margin-left:8px; }
+        .message.confirm button{
+          padding:6px 10px; border:0; border-radius:4px; cursor:pointer;
+          background:#007bff; color:#fff;
+        }
         /* Estilo responsive para pantallas pequeñas */
         @media (max-width: 600px) {
             body {
@@ -183,14 +224,41 @@
 <body>
     <div class="container">
         <h1>&#x1F1EA;&#x1F1F8; LIGA COGNATIS &#x1F1EA;&#x1F1F8;</h1>
+        {% if session.get('user') %}
+          <div class="user-row">
+            <div class="user-info">Usuario: <strong>{{ session.get('user') }}</strong></div>
+            {% if selected_team %}
+              <div class="selected-info">Equipo: <strong>{{ selected_team }}</strong></div>
+            {% endif %}
+
+            <div class="profile-menu">
+              <button id="profileBtn" class="profile-btn" aria-haspopup="true" aria-expanded="false" aria-controls="profileMenu" title="Cuenta">
+                <!-- Icono persona (SVG inline) -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 12c2.761 0 5-2.686 5-6s-2.239-6-5-6-5 2.686-5 6 2.239 6 5 6zm0 2c-4.418 0-8 3.134-8 7v1h16v-1c0-3.866-3.582-7-8-7z"/>
+                </svg>
+              </button>
+              <div id="profileMenu" class="menu" hidden>
+                <!-- Enlaza a tu futura página; por ahora apunta a una ruta estática que no rompe la plantilla -->
+                <a href="{{ url_for('change_password') }}" class="menu-item">Cambiar contraseña</a>
+                <form method="POST" action="{{ url_for('logout') }}" class="menu-item-form">
+                  <button type="submit" class="menu-item as-button">Cerrar sesión</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+
         <h2>Selecciona un equipo</h2>
         <!-- Mostrar mensaje de éxito/error arriba de la lista -->
         {% with messages = get_flashed_messages(with_categories=True) %}
-            {% if messages %}
-                <div id="message" class="{{ messages[0][0] }}">
-                    {{ messages[0][1] }}
-                </div>
-            {% endif %}
+          {% if messages %}
+            <div id="flash-messages">
+              {% for category, msg in messages %}
+                <div class="message {{ category }}">{{ msg|safe }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
         {% endwith %}
 
         <!-- Campo de búsqueda para filtrar equipos -->
@@ -216,68 +284,112 @@
     </div>
 
     <script>
-        let maxVisibleItems = 10; // Valor inicial que se actualizará
+      let maxVisibleItems = 10; // Valor inicial que se actualizará
 
-        // Calcula el número de elementos que caben en pantalla
-        function calcularMaxVisibleItems() {
-            const containerHeight = document.querySelector('.container').clientHeight;
-            const itemHeight = document.querySelector('.team-item').clientHeight;
-            const searchHeight = document.getElementById('search').clientHeight;
-            maxVisibleItems = Math.max(1,Math.floor((window.innerHeight - searchHeight - 100) / itemHeight)-2);
+      // Calcula el número de elementos que caben en pantalla
+      function calcularMaxVisibleItems() {
+        const item = document.querySelector('.team-item');
+        const searchEl = document.getElementById('search');
+        if (!item || !searchEl) return;
+
+        const itemHeight = item.clientHeight || 0;
+        const searchHeight = searchEl.clientHeight || 0;
+        maxVisibleItems = Math.max(
+          1,
+          Math.floor((window.innerHeight - searchHeight - 100) / (itemHeight || 1)) - 2
+        );
+      }
+
+      // Eliminar tildes de una cadena
+      function removeDiacritics(text) {
+        return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      }
+
+      // Filtrado en tiempo real
+      function filtrarEquipos() {
+        calcularMaxVisibleItems();
+        const searchInput = document.getElementById('search');
+        const searchTerm = removeDiacritics((searchInput ? searchInput.value : '').trim().toLowerCase());
+        const teamItems = document.querySelectorAll('.team-item');
+        let displayed = 0;
+
+        teamItems.forEach(item => {
+          const span = item.querySelector('span');
+          const teamName = span ? removeDiacritics(span.textContent.toLowerCase()) : '';
+          const match = teamName.includes(searchTerm);
+
+          // Mostrar solo los primeros elementos que caben en la pantalla
+          item.style.display = match && displayed < maxVisibleItems ? 'flex' : 'none';
+          if (match) displayed++;
+        });
+      }
+
+      // Seleccionar un equipo
+      function seleccionarEquipo(equipoID, equipoName) {
+        // Quitar la clase 'selected' del elemento previamente seleccionado
+        const previouslySelected = document.querySelector('.team-item.selected');
+        if (previouslySelected) {
+          previouslySelected.classList.remove('selected');
         }
 
-        // Función para eliminar tildes de una cadena
-        function removeDiacritics(text) {
-            return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        // Añadir la clase 'selected' al equipo actualmente seleccionado
+        const selector = `.team-item[onclick="seleccionarEquipo('${equipoID}', '${equipoName}')"]`;
+        const selectedItem = document.querySelector(selector);
+        if (selectedItem) {
+          selectedItem.classList.add('selected');
         }
 
-        // Función de filtrado en tiempo real
-        function filtrarEquipos() {
-            calcularMaxVisibleItems();
-            const searchTerm = removeDiacritics(document.getElementById('search').value.trim().toLowerCase());
-            const teamItems = document.querySelectorAll('.team-item');
-            let displayed = 0;
+        document.getElementById('equipo_id').value = equipoID;
+        document.getElementById('selectedTeamDisplay').textContent = `Equipo seleccionado: ${equipoName}`;
+        document.getElementById('submitButton').style.display = 'block';
+      }
 
-            teamItems.forEach(item => {
-                const teamName = removeDiacritics(item.querySelector('span').textContent.toLowerCase());
-                const match = teamName.includes(searchTerm);
+      // Inicializar menú de perfil (icono → desplegable)
+      function initProfileMenu() {
+        const btn = document.getElementById('profileBtn');
+        const menu = document.getElementById('profileMenu');
+        if (!btn || !menu) return;
 
-                // Mostrar solo los primeros elementos que caben en la pantalla
-                item.style.display = match && displayed < maxVisibleItems ? 'flex' : 'none';
-                if (match) displayed++;
-            });
-        }
+        const closeMenu = () => {
+          if (!menu.hidden) {
+            menu.hidden = true;
+            btn.setAttribute('aria-expanded', 'false');
+          }
+        };
 
-        // Función para seleccionar un equipo
-        function seleccionarEquipo(equipoID, equipoName) {
-            // Quitar la clase 'selected' de cualquier elemento previamente seleccionado
-            const previouslySelected = document.querySelector('.team-item.selected');
-            if (previouslySelected) {
-                previouslySelected.classList.remove('selected');
-            }
-
-            // Añadir la clase 'selected' al equipo actualmente seleccionado
-            const selectedItem = document.querySelector(`.team-item[onclick="seleccionarEquipo('${equipoID}', '${equipoName}')"]`);
-            if (selectedItem) {
-                selectedItem.classList.add('selected');
-            }
-
-            document.getElementById('equipo_id').value = equipoID;
-            document.getElementById('selectedTeamDisplay').textContent = `Equipo seleccionado: ${equipoName}`;
-            document.getElementById('submitButton').style.display = 'block';
-        }
-
-        // Mostrar solo los primeros 10 equipos al cargar la página
-        document.addEventListener('DOMContentLoaded', () => {
-            calcularMaxVisibleItems();
-            filtrarEquipos();
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const willOpen = menu.hidden;       // estado que tendrá tras el click
+          menu.hidden = !menu.hidden;         // toggle
+          btn.setAttribute('aria-expanded', String(willOpen));
         });
 
-        // Recalcula el número de elementos visibles cuando la ventana se redimensiona
-        window.addEventListener('resize', () => {
-            calcularMaxVisibleItems();
-            filtrarEquipos();
+        // Cerrar al hacer click fuera
+        document.addEventListener('click', (e) => {
+          if (!menu.hidden && !menu.contains(e.target) && e.target !== btn) {
+            closeMenu();
+          }
         });
+
+        // Cerrar con Escape
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') closeMenu();
+        });
+      }
+
+      // Al cargar la página
+      document.addEventListener('DOMContentLoaded', () => {
+        calcularMaxVisibleItems();
+        filtrarEquipos();
+        initProfileMenu();
+      });
+
+      // Recalcular al redimensionar
+      window.addEventListener('resize', () => {
+        calcularMaxVisibleItems();
+        filtrarEquipos();
+      });
     </script>
+
 </body>
 </html>
