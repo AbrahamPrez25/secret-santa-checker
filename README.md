@@ -1,7 +1,3 @@
-Aquí tienes un **README.md** listo para pegar en el repo.
-
----
-
 # LIGA COGNATIS – Selector de equipos (con login)
 
 Aplicación Flask para que usuarios autenticados elijan **un único equipo** de una lista (clubs + selecciones).
@@ -192,13 +188,3 @@ Asegura:
 * `SECRET_KEY` segura (p. ej. variable de entorno).
 * Volúmenes persistentes para `users.json` y `selected_teams.json`.
 * (Opcional) Proxy/Nginx delante de gunicorn y HTTPS.
-
----
-
-## 📄 Licencia
-
-Indica aquí la licencia del proyecto (MIT, Apache-2.0, etc.), si aplica.
-
----
-
-¿Quieres que añada un ejemplo mínimo de `requirements.txt` o prefieres usar el que ya tienes y lo dejamos así?
