@@ -16,7 +16,9 @@
 <body>
   <div class="card">
     <h1>🎁 LIGA COGNATIS</h1>
-
+    <form method="POST" action="{{ url_for('logout') }}" style="margin-bottom:12px;text-align:right">
+      <button type="submit" class="btn" style="background:#e03131">Cerrar sesión</button>
+    </form>
     {% if draw_done %}
       <p class="msg">Sorteo realizado.</p>
       {% if assigned_to %}

@@ -10,12 +10,17 @@
     ul{margin:8px 0 16px 0;padding-left:18px}
     .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#e9ecef;margin:0 6px 6px 0}
     .note{color:#555;margin:6px 0 14px 0}
-    .btn{display:inline-block;padding:10px 14px;border:0;border-radius:6px;background:#007bff;color:#fff;text-decoration:none;cursor:pointer;opacity:.6;pointer-events:none}
+    .btn{display:inline-block;padding:10px 14px;border:0;border-radius:6px;background:#007bff;color:#fff;text-decoration:none;cursor:pointer;}
     .btn:hover{background:#0056b3}
+    .btn.danger{background:#e03131}
+    .btn.danger:hover{background:#c92a2a}
   </style>
 </head>
 <body>
   <div class="card">
+      <form method="POST" action="{{ url_for('logout') }}" style="text-align:right;margin-bottom:8px">
+        <button type="submit" class="btn danger">Cerrar sesión</button>
+      </form>
     <h1>Panel de administración</h1>
     {% if draw_done %}
       <p class="note">El sorteo ya está marcado como realizado.</p>
@@ -34,9 +39,33 @@
       <p>(No hay usuarios)</p>
     {% endif %}
 
-    <h3>Acciones</h3>
-    <p class="note">El botón de sorteo se activará en el próximo paso.</p>
-    <button class="btn">Realizar sorteo (pendiente)</button>
+    <h3>Restricciones (opcional)</h3>
+    <p class="note">
+      Pega aquí el resultado anterior o parejas prohibidas. Formato por línea:
+      <code>A:B</code> o <code>A -> B</code> o <code>A,B</code>.
+      (Ej.: <em>Jorge:Pedro</em> evita que Jorge vuelva a regalar a Pedro.)
+    </p>
+
+    <form method="POST" action="{{ url_for('admin_draw') }}">
+      <textarea name="forbidden_text" rows="6" style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;padding:8px" placeholder="Ejemplo:
+    Jorge:Pedro
+    Abraham -> Jorge
+    Pedro,Abraham"></textarea>
+
+      <div style="margin-top:10px">
+        <button type="submit" class="btn">Realizar sorteo</button>
+      </div>
+    </form>
+
+    {% if forbidden_pairs %}
+      <h3 style="margin-top:18px">Parejas prohibidas guardadas (histórico)</h3>
+      <ul>
+        {% for p in forbidden_pairs %}
+          <li>{{ p }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
   </div>
 </body>
 </html>

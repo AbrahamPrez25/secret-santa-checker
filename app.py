@@ -134,6 +134,101 @@ def get_assigned_to(username: str):
     d = load_draw()
     return d.get('assignments', {}).get(username)
 
+import random
+
+def _parse_forbidden_pairs(text: str) -> list[tuple[str, str]]:
+    """
+    Parsea líneas tipo:
+      A:B
+      A -> B
+      A,B
+    Devuelve lista de tuplas (A, B) significando 'A no puede regalar a B'.
+    """
+    pairs = []
+    if not text:
+        return pairs
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        for sep in ["->", ":", ","]:
+            if sep in line:
+                a, b = [s.strip() for s in line.split(sep, 1)]
+                if a and b:
+                    pairs.append((a, b))
+                break
+        else:
+            # si no hay separador, ignora la línea
+            continue
+    return pairs
+
+def _build_forbidden_lookup(forbidden_pairs: list[tuple[str, str]]) -> dict[str, set[str]]:
+    d: dict[str, set[str]] = {}
+    for a, b in forbidden_pairs:
+        d.setdefault(a, set()).add(b)
+    return d
+
+def _backtracking_assignment(users: list[str], forbidden: dict[str, set[str]]) -> dict[str, str] | None:
+    """
+    Encuentra asignación tal que:
+      - nadie se asigna a sí mismo
+      - respeta forbidden[a] (conjunto de receptores prohibidos para a)
+      - evita parejas de 2 ciclos (A->B y B->A)
+    Estrategia: backtracking ordenando por el que menos opciones tiene.
+    """
+    U = list(users)
+    # mapa de opciones válidas
+    options: dict[str, set[str]] = {}
+    for u in U:
+        opts = set(U) - {u} - forbidden.get(u, set())
+        options[u] = opts
+
+    # si alguien no tiene opciones, imposible
+    if any(len(opts) == 0 for opts in options.values()):
+        return None
+
+    # ordena por menor dominio (heurística MRV)
+    order = sorted(U, key=lambda x: len(options[x]))
+
+    assigned: dict[str, str] = {}
+    used_recipients: set[str] = set()
+
+    def dfs(i: int) -> bool:
+        if i == len(order):
+            return True
+        giver = order[i]
+        # Probar en orden aleatorio para diversificar soluciones
+        candidates = list(options[giver] - used_recipients)
+        random.shuffle(candidates)
+        for rec in candidates:
+            # Evita 2-ciclos: si ya hemos asignado rec->giver, no permitir giver->rec
+            if assigned.get(rec) == giver:
+                continue
+            assigned[giver] = rec
+            used_recipients.add(rec)
+            if dfs(i + 1):
+                return True
+            # backtrack
+            used_recipients.remove(rec)
+            del assigned[giver]
+        return False
+
+    ok = dfs(0)
+    return assigned if ok else None
+
+def compute_draw(users: list[str], forbidden_pairs: list[tuple[str, str]]) -> dict[str, str] | None:
+    """
+    Intenta varias veces con aleatoriedad para encontrar una asignación válida.
+    """
+    forbidden = _build_forbidden_lookup(forbidden_pairs)
+    # pequeños N: unos cuantos intentos aleatorios por si el orden inicial bloquea
+    for _ in range(200):
+        random.shuffle(users)
+        result = _backtracking_assignment(users, forbidden)
+        if result:
+            return result
+    return None
+
 
 # -------- Utilidad: requisito de login --------
 def login_required(view_func):
@@ -182,11 +277,17 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    # Bloquea el index hasta que haya sorteo
     d = load_draw()
     if not d.get('done'):
+        # Si el sorteo NO está hecho:
+        # - el admin (primer usuario) va al panel
+        # - el resto a la pantalla de espera
+        username = session['user']
+        if is_admin_user(username):
+            return redirect(url_for('admin_panel'))
         return redirect(url_for('espera'))
 
+    # Si el sorteo SÍ está hecho, se muestra la selección de equipo
     username = session['user']
     actual = obtener_seleccion_de_usuario(username)
     selected_team = id_to_name(actual['equipo_id']) if actual else None
@@ -213,6 +314,47 @@ def admin_panel():
                            users=users_list,
                            draw_done=bool(d.get('done')),
                            forbidden_pairs=d.get('forbidden_pairs', []))
+
+@app.route('/admin/draw', methods=['POST'])
+@login_required
+def admin_draw():
+    username = session['user']
+    if not is_admin_user(username):
+        flash('Acceso restringido.', 'error')
+        return redirect(url_for('espera'))
+
+    # Textarea con parejas prohibidas (incluye resultado anterior si el admin lo pega)
+    forbidden_text = request.form.get('forbidden_text', '').strip()
+    extra_pairs = _parse_forbidden_pairs(forbidden_text)
+
+    # Prepara lista de usuarios
+    users_list = [u['username'] for u in cargar_usuarios_lista()]
+    if len(users_list) < 2:
+        flash('Se necesitan al menos 2 usuarios para el sorteo.', 'error')
+        return redirect(url_for('admin_panel'))
+
+    # Calcula
+    assignment = compute_draw(users_list[:], extra_pairs)
+    if not assignment:
+        # mensaje útil para depurar
+        flash('No fue posible generar un sorteo con las restricciones dadas. Revisa las parejas prohibidas o reduce restricciones.', 'error')
+        return redirect(url_for('admin_panel'))
+
+    # Guarda estado
+    d = load_draw()
+    d['done'] = True
+    d['assignments'] = assignment
+    # Persistimos también las parejas prohibidas que usó el admin como referencia
+    prev_forbidden = d.get('forbidden_pairs', [])
+    merged = prev_forbidden + extra_pairs
+    # normaliza en texto plano para lectura futura
+    d['forbidden_pairs'] = list({f"{a}::{b}" for a, b in merged})
+    save_draw(d)
+
+    flash('Sorteo realizado correctamente.', 'success')
+    # Tras el sorteo, redirige a la pantalla de espera que ya muestra el destinatario
+    return redirect(url_for('espera'))
+
 
 @app.route('/seleccionar-equipo', methods=['POST'])
 @login_required
