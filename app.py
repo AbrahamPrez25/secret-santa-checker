@@ -108,16 +108,10 @@ def login_required(view_func):
     @wraps(view_func)
     def wrapper(*args, **kwargs):
         if 'user' not in session:
-            flash('Debes iniciar sesión.', 'error')
             return redirect(url_for('login'))
         return view_func(*args, **kwargs)
     return wrapper
 
-def id_to_name(equipo_id: str) -> str:
-    for t in all_teams:
-        if t['ID'] == str(equipo_id):
-            return t['Name']
-    return equipo_id
 
 # -------- Rutas --------
 @app.route('/login', methods=['GET', 'POST'])
@@ -141,6 +135,7 @@ def login():
     return render_template('login.html')
 
 @app.route('/logout', methods=['POST'])
+@login_required
 def logout():
     session.pop('user', None)
     flash('Sesión cerrada.', 'success')
