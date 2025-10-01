@@ -102,6 +102,39 @@ def actualizar_seleccion(username: str, nuevo_equipo_id: str):
         })
     guardar_items(items)
 
+# -------- Estado del sorteo --------
+DRAW_FILE = 'draw.json'
+
+def _ensure_draw_file():
+    if not os.path.exists(DRAW_FILE):
+        with open(DRAW_FILE, 'w', encoding='utf-8') as f:
+            json.dump({"done": False, "assignments": {}, "forbidden_pairs": []}, f, ensure_ascii=False, indent=2)
+_ensure_draw_file()
+
+def load_draw():
+    with open(DRAW_FILE, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+def save_draw(state: dict):
+    import tempfile
+    dir_ = os.path.dirname(os.path.abspath(DRAW_FILE)) or "."
+    with tempfile.NamedTemporaryFile("w", delete=False, dir=dir_, encoding="utf-8") as tmp:
+        json.dump(state, tmp, ensure_ascii=False, indent=2)
+        tmp_path = tmp.name
+    os.replace(tmp_path, DRAW_FILE)
+
+def get_admin_username():
+    users = cargar_usuarios_lista()
+    return users[0]['username'] if users else None
+
+def is_admin_user(username: str) -> bool:
+    return username == get_admin_username()
+
+def get_assigned_to(username: str):
+    d = load_draw()
+    return d.get('assignments', {}).get(username)
+
+
 # -------- Utilidad: requisito de login --------
 def login_required(view_func):
     from functools import wraps
@@ -123,15 +156,20 @@ def login():
 
         if username in users and check_password_hash(users[username], password):
             session['user'] = username
-            flash('Sesión iniciada.', 'success')
-            return redirect(url_for('index'))
+            d = load_draw()
+            # Antes del sorteo: admin va a panel; resto a espera
+            if not d.get('done'):
+                if is_admin_user(username):
+                    return redirect(url_for('admin_panel'))
+                return redirect(url_for('espera'))
+            # Después del sorteo: todos ven la pantalla con su asignación y botón a "Elegir equipo"
+            return redirect(url_for('espera'))
         else:
             flash('Usuario o contraseña incorrectos.', 'error')
             return render_template('login.html')
 
-    # GET
     if 'user' in session:
-        return redirect(url_for('index'))
+        return redirect(url_for('espera'))
     return render_template('login.html')
 
 @app.route('/logout', methods=['POST'])
@@ -144,11 +182,37 @@ def logout():
 @app.route('/')
 @login_required
 def index():
+    # Bloquea el index hasta que haya sorteo
+    d = load_draw()
+    if not d.get('done'):
+        return redirect(url_for('espera'))
+
     username = session['user']
-    actual = obtener_seleccion_de_usuario(username)  # devuelve dict o None
+    actual = obtener_seleccion_de_usuario(username)
     selected_team = id_to_name(actual['equipo_id']) if actual else None
     return render_template('index.html', club_data=all_teams, selected_team=selected_team)
 
+@app.route('/espera')
+@login_required
+def espera():
+    username = session['user']
+    d = load_draw()
+    assigned = d.get('assignments', {}).get(username)
+    return render_template('waiting.html', draw_done=bool(d.get('done')), assigned_to=assigned)
+
+@app.route('/admin')
+@login_required
+def admin_panel():
+    username = session['user']
+    if not is_admin_user(username):
+        flash('Acceso restringido.', 'error')
+        return redirect(url_for('espera'))
+    users_list = [u['username'] for u in cargar_usuarios_lista()]
+    d = load_draw()
+    return render_template('admin.html',
+                           users=users_list,
+                           draw_done=bool(d.get('done')),
+                           forbidden_pairs=d.get('forbidden_pairs', []))
 
 @app.route('/seleccionar-equipo', methods=['POST'])
 @login_required

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin · Sorteo</title>
+  <style>
+    body{font-family:Arial,sans-serif;background:#f4f4f9;display:flex;align-items:flex-start;justify-content:center;min-height:100vh;margin:0;padding:20px}
+    .card{background:#fff;max-width:720px;width:100%;padding:20px;border-radius:8px;box-shadow:0 4px 8px rgba(0,0,0,.1)}
+    h1{margin:0 0 10px 0}
+    ul{margin:8px 0 16px 0;padding-left:18px}
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#e9ecef;margin:0 6px 6px 0}
+    .note{color:#555;margin:6px 0 14px 0}
+    .btn{display:inline-block;padding:10px 14px;border:0;border-radius:6px;background:#007bff;color:#fff;text-decoration:none;cursor:pointer;opacity:.6;pointer-events:none}
+    .btn:hover{background:#0056b3}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Panel de administración</h1>
+    {% if draw_done %}
+      <p class="note">El sorteo ya está marcado como realizado.</p>
+    {% else %}
+      <p class="note">A continuación verás la lista de usuarios. En el siguiente paso añadiremos el botón de “Realizar sorteo” y las restricciones.</p>
+    {% endif %}
+
+    <h3>Usuarios</h3>
+    {% if users %}
+      <div>
+        {% for u in users %}
+          <span class="pill">{{ u }}</span>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p>(No hay usuarios)</p>
+    {% endif %}
+
+    <h3>Acciones</h3>
+    <p class="note">El botón de sorteo se activará en el próximo paso.</p>
+    <button class="btn">Realizar sorteo (pendiente)</button>
+  </div>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎁 LIGA COGNATIS</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+  <style>
+    body{font-family:Arial,sans-serif;background:#f4f4f9;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:10px}
+    .card{background:#fff;max-width:460px;width:100%;padding:20px;border-radius:8px;box-shadow:0 4px 8px rgba(0,0,0,.1);text-align:center}
+    .btn{display:inline-block;margin-top:14px;padding:10px 14px;border:0;border-radius:6px;background:#007bff;color:#fff;text-decoration:none;cursor:pointer}
+    .btn:hover{background:#0056b3}
+    .msg{font-size:1rem;color:#333}
+    .who{font-size:1.1rem;font-weight:bold;color:#222;margin-top:8px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🎁 LIGA COGNATIS</h1>
+
+    {% if draw_done %}
+      <p class="msg">Sorteo realizado.</p>
+      {% if assigned_to %}
+        <p class="who">Te ha tocado regalarle a: <strong>{{ assigned_to }}</strong></p>
+      {% else %}
+        <p class="msg">No hay asignación para tu usuario.</p>
+      {% endif %}
+      <a class="btn" href="{{ url_for('index') }}">Elegir equipo</a>
+    {% else %}
+      <p class="msg">Esperando que el administrador realice el sorteo…</p>
+    {% endif %}
+  </div>
+</body>
+</html>
