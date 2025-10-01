@@ -112,6 +112,7 @@ def _ensure_draw_file():
 _ensure_draw_file()
 
 def load_draw():
+    _ensure_draw_file()
     with open(DRAW_FILE, 'r', encoding='utf-8') as f:
         return json.load(f)
 

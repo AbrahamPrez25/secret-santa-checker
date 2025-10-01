@@ -11,14 +11,64 @@
     .btn:hover{background:#0056b3}
     .msg{font-size:1rem;color:#333}
     .who{font-size:1.1rem;font-weight:bold;color:#222;margin-top:8px}
+    .user-row{
+      display:flex; align-items:center; justify-content:center;
+      gap:10px; margin:6px 0 4px 0; flex-wrap:wrap;
+    }
+    .user-info{ color:#555; font-size:14px; }
+    .selected-info{ color:#333; font-size:14px; }
+
+    .profile-menu{ position:relative; }
+    .profile-btn{
+      background:transparent; border:none; padding:4px; cursor:pointer;
+      border-radius:50%;
+    }
+    .profile-btn:hover{ background:#f0f0f5; }
+    .profile-btn:focus{ outline:2px solid #007bff33; }
+
+    .menu{
+      position:absolute; top:calc(100% + 6px); right:0;
+      min-width:190px; background:#fff; border:1px solid #ddd; border-radius:8px;
+      box-shadow:0 8px 24px rgba(0,0,0,.12); padding:6px; z-index:1000;
+    }
+    .menu-item,
+    .menu .as-button{
+      display:block; width:100%; text-align:left;
+      padding:8px 12px; border-radius:6px; text-decoration:none; color:#333;
+      background:none; border:none; cursor:pointer; font:inherit;
+    }
+    .menu-item:hover,
+    .menu .as-button:hover{ background:#f4f4f9; }
+    .menu-item-form{ margin:0; }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>🎁 LIGA COGNATIS</h1>
-    <form method="POST" action="{{ url_for('logout') }}" style="margin-bottom:12px;text-align:right">
-      <button type="submit" class="btn" style="background:#e03131">Cerrar sesión</button>
-    </form>
+    {% if session.get('user') %}
+      <div class="user-row">
+        <div class="user-info">Usuario: <strong>{{ session.get('user') }}</strong></div>
+        {% if selected_team %}
+          <div class="selected-info">Equipo: <strong>{{ selected_team }}</strong></div>
+        {% endif %}
+
+        <div class="profile-menu">
+          <button id="profileBtn" class="profile-btn" aria-haspopup="true" aria-expanded="false" aria-controls="profileMenu" title="Cuenta">
+            <!-- Icono persona (SVG inline) -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 12c2.761 0 5-2.686 5-6s-2.239-6-5-6-5 2.686-5 6 2.239 6 5 6zm0 2c-4.418 0-8 3.134-8 7v1h16v-1c0-3.866-3.582-7-8-7z"/>
+            </svg>
+          </button>
+          <div id="profileMenu" class="menu" hidden>
+            <a href="{{ url_for('change_password') }}" class="menu-item">Cambiar contraseña</a>
+            <form method="POST" action="{{ url_for('logout') }}" class="menu-item-form">
+              <button type="submit" class="menu-item as-button">Cerrar sesión</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
     {% if draw_done %}
       <p class="msg">Sorteo realizado.</p>
       {% if assigned_to %}
@@ -31,5 +81,44 @@
       <p class="msg">Esperando que el administrador realice el sorteo…</p>
     {% endif %}
   </div>
+<script>
+  // Inicializar menú de perfil (igual que en index.html)
+  function initProfileMenu() {
+    const btn = document.getElementById('profileBtn');
+    const menu = document.getElementById('profileMenu');
+    if (!btn || !menu) return;
+
+    const closeMenu = () => {
+      if (!menu.hidden) {
+        menu.hidden = true;
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    };
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const willOpen = menu.hidden;       // estado que tendrá tras el click
+      menu.hidden = !menu.hidden;         // toggle
+      btn.setAttribute('aria-expanded', String(willOpen));
+    });
+
+    // Cerrar al hacer click fuera
+    document.addEventListener('click', (e) => {
+      if (!menu.hidden && !menu.contains(e.target) && e.target !== btn) {
+        closeMenu();
+      }
+    });
+
+    // Cerrar con Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeMenu();
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initProfileMenu();
+  });
+</script>
+
 </body>
 </html>

@@ -1,190 +1,154 @@
-# LIGA COGNATIS – Selector de equipos (con login)
+# LIGA COGNATIS – Sorteo y selección de equipos
 
-Aplicación Flask para que usuarios autenticados elijan **un único equipo** de una lista (clubs + selecciones).
-Cada equipo **solo puede ser elegido por una persona**. Si un usuario ya eligió un equipo y selecciona otro, se le muestra un **flash** con la pregunta de confirmación y un botón para **cambiar** su elección.
+Aplicación Flask para organizar un **amigo invisible futbolero** 🎁⚽.  
+Incluye autenticación, un **sorteo inicial gestionado por el administrador** y luego la **selección de equipos únicos**.
 
 ## 🧱 Estructura (resumen)
 
 ```
+
 .
 ├── app.py
 ├── requirements.txt
 ├── soccerWiki.json             # datos fuente (ClubData + InternationalData)
-├── selected_teams.json         # se genera en runtime (user/equipo)
+├── selected_teams.json         # selecciones de equipos
 ├── users.json                  # hashes de contraseñas (no subir a repos públicos)
+├── draw.json                   # estado del sorteo (asignaciones y restricciones)
 ├── manage_users.py             # CLI para gestionar users.json
 ├── templates/
 │   ├── login.html              # login de usuario
-│   └── index.html              # listado + búsqueda + selección de equipo
+│   ├── waiting.html            # pantalla de espera/asignación tras el sorteo
+│   ├── admin.html              # panel del administrador
+│   ├── index.html              # listado + búsqueda + selección de equipo
+│   └── change_password.html    # cambio de contraseña
 └── static/
-    ├── favicon.ico
-    └── images/club_logos/{ID}.png
-```
+├── favicon.ico
+└── images/club_logos/{ID}.png
+
+````
 
 ## ✨ Funcionalidad
 
-* **Login** con usuario/contraseña (hash scrypt o pbkdf2).
-* Lista de equipos (clubs + selecciones) con búsqueda local y logos por `ID`.
-* **Reglas de negocio**:
+### 1. Login y roles
+- Autenticación con usuario/contraseña (`users.json`).
+- El **primer usuario creado** es el **administrador**.
 
-  1. Un equipo no puede tener más de un dueño.
-  2. Cada usuario solo puede tener un equipo.
+### 2. Sorteo
+- Antes de realizarse el sorteo:
+  - **Usuarios normales** → ven `waiting.html` con el mensaje *“Esperando que el administrador realice el sorteo”*.
+  - **Administrador** → accede a `admin.html`, donde ve la lista de usuarios y un formulario para configurar restricciones.
+- El administrador puede añadir **parejas prohibidas** (ej. resultados de sorteos anteriores) para evitar repeticiones.
+- El algoritmo asigna a cada usuario un destinatario:
+  - Nadie se asigna a sí mismo.
+  - Se evita que haya parejas simétricas (A→B y B→A).
+  - Se respetan las restricciones introducidas.
+- Tras el sorteo:
+  - Cada usuario ve en `waiting.html` el destinatario que le ha tocado.
+  - Un botón permite pasar a `index.html` para elegir equipo.
 
-     * Si intenta elegir otro: *“Ya elegiste el equipo XX. ¿Quieres cambiarlo por YY?”* + botón **Confirmar cambio** (como **flash message** en `index.html`).
-* Persistencia en archivos JSON:
+### 3. Selección de equipos
+- Lista de equipos (clubs + selecciones) con búsqueda local y logos.
+- Reglas:
+  1. Un equipo no puede ser elegido por más de un usuario.
+  2. Cada usuario solo puede tener un equipo (puede cambiarlo con confirmación).
+- Persistencia en `selected_teams.json`.
 
-  * `selected_teams.json` → `{ user, equipo_id, timestamp }`
-  * `users.json` → `{ username, password_hash }`
-* Mensajes **flash** para todos los casos (éxito, error, confirmación).
+### 4. Cambio de contraseña
+- Cualquier usuario puede actualizar su contraseña desde el menú de perfil (`change_password.html`).
 
 ---
 
 ## 🚀 Puesta en marcha (local)
 
-> Requisitos: **Python 3.10+** (recomendado), `pip`, acceso a Internet para instalar dependencias.
-
 1. Clona el repositorio y entra en la carpeta.
-
 2. Crea un entorno virtual e instala dependencias:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+    ````
 
-```bash
-python -m venv .venv
-# Activa el entorno:
-#   Windows: .venv\Scripts\activate
-#   macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-```
+3. Crea usuarios con el CLI:
 
-3. Asegúrate de tener `soccerWiki.json` en la raíz del proyecto.
+   ```bash
+   python manage_users.py add admin   # primer usuario = administrador
+   python manage_users.py add juan
+   ```
+4. Ejecuta el servidor:
 
-   * El app usa `ClubData[]` y (si existe) `InternationalData[]`.
-   * Convierte internamente los `ID` a `str` y antepone `“Selección: ”` a los nombres internacionales.
-   * Los logos se buscan en `static/images/club_logos/{ID}.png`.
+   ```bash
+   gunicorn app:app --bind 0.0.0.0:8000 --workers 2
+   ```
 
-4. Crea usuarios y contraseñas (hash) con el **CLI**:
-
-```bash
-python manage_users.py add ana                  # pide contraseña (hash scrypt por defecto)
-python manage_users.py add luis --method pbkdf2:sha256:600000
-python manage_users.py list                     # muestra usuarios y algoritmo de hash
-```
-
-> **Importante:** `users.json` contiene *hashes*, no contraseñas en claro. **No** lo subas a repos públicos; añádelo a `.gitignore`.
-
-5. Ejecuta el servidor:
-
-```bash
-# Opción A: Python directo
-python app.py
-
-# Opción B: Flask
-# (si usas Flask CLI) 
-# export FLASK_APP=app.py  (Linux/macOS)
-# set FLASK_APP=app.py     (Windows)
-flask run
-```
-
-Accede a **[http://localhost:5000](http://localhost:5000)**. Verás primero la página de **login** (`/login`).
-Tras iniciar sesión, pasarás a `index` con la lista de equipos.
+Accede a [http://localhost:8000](http://localhost:8000).
 
 ---
 
 ## 🔐 Gestión de usuarios (CLI)
 
-Archivo: `manage_users.py` (requiere `werkzeug`)
+El script `manage_users.py` permite:
+
+* Crear usuarios (`add`)
+* Cambiar contraseñas (`set-password`)
+* Eliminar usuarios (`delete`)
+* Listar usuarios (`list`)
+* Verificar contraseñas (`check`)
+
+Ejemplo:
 
 ```bash
-# Crear usuario (pide contraseña con eco oculto)
 python manage_users.py add ana
-
-# Crear con PBKDF2 (ejemplo 600k iteraciones)
-python manage_users.py add luis --method pbkdf2:sha256:600000
-
-# Cambiar contraseña
-python manage_users.py set-password ana
-
-# Verificar credenciales
-python manage_users.py check ana
-
-# Listar usuarios (muestra el algoritmo del hash usado)
 python manage_users.py list
-
-# Borrar usuario
-python manage_users.py delete luis
-
-# Usar otro path para users.json
-python manage_users.py --file /ruta/persistente/users.json list
 ```
-
-> El CLI guarda JSON de forma **atómica** (archivo temporal + `os.replace`) para evitar corrupción.
 
 ---
 
 ## 🌐 Rutas principales
 
 * `GET  /login` – Formulario de login.
-* `POST /login` – Valida credenciales (`users.json` + `check_password_hash`).
-* `POST /logout` – Cierra sesión y vuelve a `/login`.
-* `GET  /` – (protegida) Muestra `index.html` con la lista de equipos y búsqueda.
-* `POST /seleccionar-equipo` – Lógica de selección:
-
-  * Si el equipo ya lo eligió otro usuario → **flash error**.
-  * Si el usuario ya tenía equipo distinto → **flash de confirmación** con botón “Confirmar cambio”.
-  * Si el usuario ya tenía el mismo equipo → **flash success** informativo.
-  * Si es primera elección válida → guarda en `selected_teams.json` y **flash success**.
-* `POST /confirmar-cambio` – Aplica el cambio (revalida que el equipo siga libre).
-
----
-
-## 🗂️ Datos y plantillas
-
-* `soccerWiki.json`
-
-  * Usa campos `ID` y `Name`.
-  * `ImageURL` y `ShortName` **no** se usan en la vista actual.
-  * Para logos locales: `static/images/club_logos/{ID}.png`.
-* `templates/index.html`
-
-  * Búsqueda *client-side* con eliminación de tildes, límite dinámico de elementos visibles y selección con botón **Enviar**.
-  * Muestra **todas** las flash messages (éxito/error/confirmación).
-* `templates/login.html`
-
-  * Formulario simple de usuario y contraseña.
+* `POST /login` – Valida credenciales.
+* `POST /logout` – Cierra sesión.
+* `GET  /admin` – Panel del administrador (solo primer usuario).
+* `POST /admin/draw` – Ejecuta el sorteo con restricciones opcionales.
+* `GET  /espera` – Página de espera/asignación (según estado del sorteo).
+* `GET  /` – Lista de equipos (solo accesible tras sorteo).
+* `POST /seleccionar-equipo` – Selección de equipo.
+* `POST /confirmar-cambio` – Confirma cambio de equipo.
+* `GET/POST /change-password` – Cambio de contraseña.
 
 ---
 
-## 🛡️ Seguridad y persistencia
+## 🗂️ Datos
 
-* Cambia `app.secret_key` en producción (usa una variable de entorno).
-* `users.json` y `selected_teams.json` deben estar en **almacenamiento persistente**.
-
-  * **Ojo** con plataformas de hosting de **disco efímero** (p. ej. Heroku sin add-ons): tras reiniciar, los JSON vuelven al estado de la imagen. Monta un volumen o usa una DB si necesitas durabilidad.
-* Las contraseñas se guardan **hasheadas** (por defecto `scrypt`; también se admite `pbkdf2:sha256[:iter]`). `check_password_hash()` detecta el método automáticamente.
-
----
-
-## 🧪 Comprobación rápida
-
-1. Arranca la app.
-2. Crea dos usuarios (`ana`, `luis`).
-3. Entra como `ana` y elige un equipo **A** → éxito.
-4. Entra como `luis` e intenta elegir **A** → **flash** de error “ya seleccionado”.
-5. Vuelve como `ana`, elige **B** → **flash** con “Ya elegiste A… ¿cambiar por B?” + botón.
-6. Pulsa **Confirmar cambio** → éxito y `selected_teams.json` actualizado.
+* `users.json` – credenciales (hash).
+* `draw.json` – estado del sorteo y restricciones.
+* `selected_teams.json` – equipos elegidos por usuario.
+* `soccerWiki.json` – lista de equipos y selecciones.
 
 ---
 
-## 🧰 Despliegue (producción)
+## 🛡️ Seguridad
 
-Con **gunicorn**:
+* Cambia `app.secret_key` en producción (usa variable de entorno).
+* Guarda `users.json`, `draw.json` y `selected_teams.json` en almacenamiento persistente.
+* Contraseñas hasheadas (`scrypt` por defecto, también se admite `pbkdf2`).
 
-```bash
-pip install gunicorn
-gunicorn app:app --bind 0.0.0.0:8000 --workers 2
-```
+---
 
-Asegura:
+## 🧪 Flujo típico
 
-* `SECRET_KEY` segura (p. ej. variable de entorno).
-* Volúmenes persistentes para `users.json` y `selected_teams.json`.
-* (Opcional) Proxy/Nginx delante de gunicorn y HTTPS.
+1. Admin inicia sesión → entra a `/admin`.
+2. Admin revisa usuarios, introduce restricciones y pulsa **Realizar sorteo**.
+3. Todos los usuarios → ven en `/espera` a quién deben regalar.
+4. Cada usuario entra a **Elegir equipo** y selecciona uno único.
+
+---
+
+## 🧰 Despliegue
+
+Recomendado usar:
+
+* `gunicorn` + `nginx` como proxy inverso.
+* HTTPS (Let’s Encrypt).
+* Variables de entorno para claves y configuraciones.
+* Volúmenes persistentes para JSON de usuarios, sorteos y equipos.
