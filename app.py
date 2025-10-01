@@ -131,6 +131,13 @@ def get_admin_username():
 def is_admin_user(username: str) -> bool:
     return username == get_admin_username()
 
+@app.context_processor
+def inject_roles():
+    def is_admin():
+        u = session.get('user')
+        return is_admin_user(u) if u else False
+    return dict(is_admin=is_admin)
+
 def get_assigned_to(username: str):
     d = load_draw()
     return d.get('assignments', {}).get(username)
@@ -356,6 +363,16 @@ def admin_draw():
     # Tras el sorteo, redirige a la pantalla de espera que ya muestra el destinatario
     return redirect(url_for('espera'))
 
+@app.route('/admin/reset-draw', methods=['POST'])
+@login_required
+def admin_reset_draw():
+    if not is_admin_user(session.get('user')):
+        flash('Acceso restringido.', 'error')
+        return redirect(url_for('espera'))
+    # Estado inicial del sorteo
+    save_draw({"done": False, "assignments": {}, "forbidden_pairs": []})
+    flash('Sorteo deshecho. Todos vuelven al estado inicial.', 'success')
+    return redirect(url_for('admin_panel'))
 
 @app.route('/seleccionar-equipo', methods=['POST'])
 @login_required

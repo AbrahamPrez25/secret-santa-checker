@@ -241,6 +241,12 @@
               <div id="profileMenu" class="menu" hidden>
                 <!-- Enlaza a tu futura página; por ahora apunta a una ruta estática que no rompe la plantilla -->
                 <a href="{{ url_for('change_password') }}" class="menu-item">Cambiar contraseña</a>
+                  {% if is_admin() %}
+                    <form method="POST" action="{{ url_for('admin_reset_draw') }}" class="menu-item-form"
+                          onsubmit="return confirm('Vas a deshacer el sorteo. ¿Estás seguro?');">
+                      <button type="submit" class="menu-item as-button">Deshacer sorteo</button>
+                    </form>
+                  {% endif %}
                 <form method="POST" action="{{ url_for('logout') }}" class="menu-item-form">
                   <button type="submit" class="menu-item as-button">Cerrar sesión</button>
                 </form>
