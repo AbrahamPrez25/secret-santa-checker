@@ -1,12 +1,15 @@
 from flask import Flask, request, render_template, redirect, url_for, flash, session
 from werkzeug.security import check_password_hash, generate_password_hash
-import json, os, datetime
+import json, os
 from markupsafe import Markup  # al inicio del archivo
 from datetime import datetime, timezone
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 app.secret_key = 'clave-secreta-para-flask'  # cámbiala en producción
+
+def now_iso_utc():
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 # -------- Datos de equipos --------
 with open('soccerWiki.json', 'r', encoding='utf-8') as f:
@@ -92,14 +95,14 @@ def actualizar_seleccion(username: str, nuevo_equipo_id: str):
     for it in items:
         if it.get('user') == username:
             it['equipo_id'] = str(nuevo_equipo_id)
-            it['timestamp'] = datetime.datetime.utcnow().isoformat() + "Z"
+            it['timestamp'] = now_iso_utc()
             found = True
             break
     if not found:
         items.append({
             "user": username,
             "equipo_id": str(nuevo_equipo_id),
-            "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
+            "timestamp": now_iso_utc()
         })
     guardar_items(items)
 
@@ -483,7 +486,7 @@ def change_password():
     new_hash = generate_password_hash(new_password)
     user_entry['password_hash'] = new_hash
 
-    user_entry['last_password_change'] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    user_entry['last_password_change'] = now_iso_utc()
 
     guardar_usuarios_lista(users_list)
 
