@@ -2,6 +2,7 @@ from flask import Flask, request, render_template, redirect, url_for, flash, ses
 from werkzeug.security import check_password_hash, generate_password_hash
 import json, os, datetime
 from markupsafe import Markup  # al inicio del archivo
+from datetime import datetime, timezone
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
@@ -481,6 +482,9 @@ def change_password():
     # Generar y guardar nuevo hash
     new_hash = generate_password_hash(new_password)
     user_entry['password_hash'] = new_hash
+
+    user_entry['last_password_change'] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
     guardar_usuarios_lista(users_list)
 
     flash('Contraseña actualizada correctamente.', 'success')

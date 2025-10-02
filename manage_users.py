@@ -2,8 +2,12 @@
 import argparse, json, os, sys, tempfile
 from getpass import getpass
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, timezone
 
 DEFAULT_USERS_FILE = os.environ.get("USERS_FILE", "users.json")
+
+def now_iso():
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 def load_users(path):
     if not os.path.exists(path):
@@ -43,7 +47,11 @@ def add_user(args):
     pwd = args.password or prompt_password()
     method = args.method  # e.g. 'scrypt' (por defecto) o 'pbkdf2:sha256:600000'
     hash_ = generate_password_hash(pwd, method=method) if method else generate_password_hash(pwd)
-    users.append({"username": args.username, "password_hash": hash_})
+    users.append({
+        "username": args.username,
+        "password_hash": hash_,
+        "last_password_change": now_iso()
+    })
     save_users(args.file, users)
     print(f"Usuario '{args.username}' creado.")
 
@@ -58,7 +66,12 @@ def set_password(args):
         pwd = args.password or prompt_password()
         method = args.method
         hash_ = generate_password_hash(pwd, method=method) if method else generate_password_hash(pwd)
-        users.append({"username": args.username, "password_hash": hash_})
+        users.append({
+            "username": args.username,
+            "password_hash": hash_,
+            "last_password_change": now_iso()
+        })
+
         save_users(args.file, users)
         print(f"Usuario '{args.username}' creado con contraseña.")
         return
@@ -67,6 +80,7 @@ def set_password(args):
     method = args.method
     hash_ = generate_password_hash(pwd, method=method) if method else generate_password_hash(pwd)
     users[idx]["password_hash"] = hash_
+    users[idx]["last_password_change"] = now_iso()
     save_users(args.file, users)
     print(f"Contraseña de '{args.username}' actualizada.")
 
