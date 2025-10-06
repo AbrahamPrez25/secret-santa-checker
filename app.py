@@ -322,10 +322,13 @@ def admin_panel():
         return redirect(url_for('espera'))
     users_list = [u['username'] for u in cargar_usuarios_lista()]
     d = load_draw()
+    selected_users = {it.get('user') for it in cargar_items() if it.get('user')}
     return render_template('admin.html',
                            users=users_list,
                            draw_done=bool(d.get('done')),
-                           forbidden_pairs=d.get('forbidden_pairs', []))
+                           forbidden_pairs=d.get('forbidden_pairs', []),
+                           selected_users = selected_users
+                           )
 
 @app.route('/admin/draw', methods=['POST'])
 @login_required
@@ -375,7 +378,8 @@ def admin_reset_draw():
         return redirect(url_for('espera'))
     # Estado inicial del sorteo
     save_draw({"done": False, "assignments": {}, "forbidden_pairs": []})
-    flash('Sorteo deshecho. Todos vuelven al estado inicial.', 'success')
+    guardar_items([])
+    flash('Sorteo deshecho y selecciones borradas. Todos vuelven al estado inicial.', 'success')
     return redirect(url_for('admin_panel'))
 
 @app.route('/seleccionar-equipo', methods=['POST'])

@@ -9,11 +9,14 @@
     h1{margin:0 0 10px 0}
     ul{margin:8px 0 16px 0;padding-left:18px}
     .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#e9ecef;margin:0 6px 6px 0}
-    .note{color:#555;margin:6px 0 14px 0}
-    .btn{display:inline-block;padding:10px 14px;border:0;border-radius:6px;background:#007bff;color:#fff;text-decoration:none;cursor:pointer;}
+    .pill.done{background:#d4edda;color:#155724;border:1px solid #c3e6cb}
+    .pill .check{margin-left:6px}
+    .btn{display:inline-block;padding:10px 14px;border:0;border-radius:6px;background:#007bff;color:#fff;text-decoration:none;cursor:pointer}
     .btn:hover{background:#0056b3}
     .btn.danger{background:#e03131}
     .btn.danger:hover{background:#c92a2a}
+    .note{color:#555;margin:6px 0 14px 0}
+    textarea{width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;padding:8px}
   </style>
 </head>
 <body>
@@ -25,37 +28,51 @@
     {% if draw_done %}
       <p class="note">El sorteo ya está marcado como realizado.</p>
     {% else %}
-      <p class="note">A continuación verás la lista de usuarios. En el siguiente paso añadiremos el botón de “Realizar sorteo” y las restricciones.</p>
+      <p class="note">Aún no se ha realizado el sorteo. Revisa los usuarios y las restricciones.</p>
     {% endif %}
 
     <h3>Usuarios</h3>
     {% if users %}
       <div>
         {% for u in users %}
-          <span class="pill">{{ u }}</span>
+          {% if draw_done %}
+            {% if selected_users and (u in selected_users) %}
+                <span class="pill done">{{ u }} <span class="check">✓</span></span>
+            {% else %}
+                <span class="pill">{{ u }}</span>
+            {% endif %}
+          {% else %}
+            <span class="pill">{{ u }}</span>
+          {% endif %}
         {% endfor %}
       </div>
     {% else %}
       <p>(No hay usuarios)</p>
     {% endif %}
 
-    <h3>Restricciones (opcional)</h3>
-    <p class="note">
-      Pega aquí el resultado anterior o parejas prohibidas. Formato por línea:
-      <code>A:B</code> o <code>A -> B</code> o <code>A,B</code>.
-      (Ej.: <em>Jorge:Pedro</em> evita que Jorge vuelva a regalar a Pedro.)
-    </p>
-
-    <form method="POST" action="{{ url_for('admin_draw') }}">
-      <textarea name="forbidden_text" rows="6" style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;padding:8px" placeholder="Ejemplo:
+    {% if draw_done %}
+      <h3 style="margin-top:18px">Acciones</h3>
+      <form method="POST" action="{{ url_for('admin_reset_draw') }}" onsubmit="return confirm('Vas a deshacer el sorteo. ¿Estás seguro?');">
+        <button type="submit" class="btn danger">Deshacer sorteo</button>
+      </form>
+      <p class="note">El sorteo está realizado. Para cambiar destinatarios, primero deshaz el sorteo.</p>
+    {% else %}
+      <h3 style="margin-top:18px">Restricciones (opcional)</h3>
+      <p class="note">
+        Pega aquí el resultado anterior o parejas prohibidas (una por línea):
+        <code>A:B</code> · <code>A -> B</code> · <code>A,B</code>
+      </p>
+      <form method="POST" action="{{ url_for('admin_draw') }}">
+        <textarea name="forbidden_text" rows="6" placeholder="Ejemplo:
     Jorge:Pedro
     Abraham -> Jorge
     Pedro,Abraham"></textarea>
+        <div style="margin-top:10px">
+          <button type="submit" class="btn">Realizar sorteo</button>
+        </div>
+      </form>
+    {% endif %}
 
-      <div style="margin-top:10px">
-        <button type="submit" class="btn">Realizar sorteo</button>
-      </div>
-    </form>
 
     {% if forbidden_pairs %}
       <h3 style="margin-top:18px">Parejas prohibidas guardadas (histórico)</h3>
