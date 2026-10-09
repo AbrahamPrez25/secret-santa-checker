@@ -44,16 +44,49 @@ def add_user(args):
     if find_index(users, args.username) != -1:
         print(f"ERROR: el usuario '{args.username}' ya existe.", file=sys.stderr)
         sys.exit(1)
+
+    # 1) Pedir nombre visible antes de la contraseña
+    name = getattr(args, "name", None)
+    if name is None:
+        try:
+            name = input(f"Nombre visible para '{args.username}' (opcional, Enter para omitir): ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nOperación cancelada.")
+            sys.exit(1)
+    name = (name or "").strip()
+
+    # 2) Pedir contraseña
     pwd = args.password or prompt_password()
     method = args.method  # e.g. 'scrypt' (por defecto) o 'pbkdf2:sha256:600000'
     hash_ = generate_password_hash(pwd, method=method) if method else generate_password_hash(pwd)
     users.append({
         "username": args.username,
+        "name": name,
         "password_hash": hash_,
         "last_password_change": now_iso()
     })
     save_users(args.file, users)
-    print(f"Usuario '{args.username}' creado.")
+    disp = f" (nombre: {name})" if name else ""
+    print(f"Usuario '{args.username}'{disp} creado.")
+
+def set_name(args):
+    users = load_users(args.file)
+    idx = find_index(users, args.username)
+    if idx == -1:
+        print(f"ERROR: el usuario '{args.username}' no existe.", file=sys.stderr)
+        sys.exit(1)
+    name = getattr(args, "name", None)
+    if name is None:
+        try:
+            name = input(f"Nuevo nombre visible para '{args.username}' (Enter para borrar): ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nOperación cancelada.")
+            sys.exit(1)
+    name = (name or "").strip()
+    users[idx]["name"] = name
+    save_users(args.file, users)
+    disp = f"'{name}'" if name else f"ninguno (usará '{args.username}')"
+    print(f"Nombre visible de '{args.username}' actualizado a {disp}.")
 
 def set_password(args):
     users = load_users(args.file)
@@ -107,7 +140,8 @@ def list_users(args):
         return
     for u in users:
         algo = u.get("password_hash", "").split(":", 1)[0] if u.get("password_hash") else "?"
-        print(f"- {u.get('username')}  [{algo}]")
+        name_part = f" ('{u.get('name')}')" if u.get('name') else ""
+        print(f"- {u.get('username')}{name_part}  [{algo}]")
     if args.show_hashes:
         print("\nHashes:")
         for u in users:
@@ -130,15 +164,21 @@ def ensure_file_exists(path):
         print(f"Inicializado {path} con una lista vacía.")
 
 def main():
-    p = argparse.ArgumentParser(description="Gestión de users.json (hash de contraseñas).")
+    p = argparse.ArgumentParser(description="Gestión de users.json (hash de contraseñas y nombres).")
     p.add_argument("--file", default=DEFAULT_USERS_FILE, help=f"Ruta del users.json (por defecto: {DEFAULT_USERS_FILE})")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     p_add = sub.add_parser("add", help="Crear usuario nuevo")
     p_add.add_argument("username")
+    p_add.add_argument("--name", help="Nombre visible para mostrar en tarjetas (si se omite, se pedirá)")
     p_add.add_argument("--password", help="(No recomendado) contraseña vía argumento; si se omite, se pedirá")
     p_add.add_argument("--method", help="Método de hash (p.ej. 'scrypt' o 'pbkdf2:sha256:600000')")
     p_add.set_defaults(func=add_user)
+
+    p_name = sub.add_parser("set-name", help="Establecer o actualizar el nombre visible")
+    p_name.add_argument("username")
+    p_name.add_argument("--name", help="Nuevo nombre visible (si se omite, se pedirá interactivamente)")
+    p_name.set_defaults(func=set_name)
 
     p_set = sub.add_parser("set-password", help="Establecer/actualizar contraseña")
     p_set.add_argument("username")

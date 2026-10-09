@@ -174,7 +174,10 @@
         <!-- Reverso (Revelado) -->
         <div class="card-face card-back">
           <div class="recipient-badge">Te ha tocado regalar a:</div>
-          <div class="recipient-name">{{ assigned_to if assigned_to else "(Sin asignación)" }}</div>
+          <div class="recipient-name">{{ (assigned_to_name or assigned_to) if assigned_to else "(Sin asignación)" }}</div>
+          {% if assigned_to and assigned_to_name and assigned_to_name != assigned_to %}
+            <div style="font-size: 0.9rem; font-weight: 500; opacity: 0.85; margin-top: -4px; margin-bottom: 6px;">@{{ assigned_to }}</div>
+          {% endif %}
           <div class="recipient-subtitle">¡Guarda el secreto y prepárale el mejor regalo! ⚽🎁</div>
           <div style="margin-top: 20px;">
             <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); toggleReveal();" style="background: rgba(255,255,255,0.25); color: #fff; border: 1px solid rgba(255,255,255,0.4);">

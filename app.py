@@ -70,6 +70,25 @@ def buscar_usuario_en_lista(users_list, username):
             return u
     return None
 
+def obtener_nombre_usuario(username: str) -> str:
+    """Devuelve el nombre configurado del usuario o su username si no tiene."""
+    if not username:
+        return ""
+    user = buscar_usuario_en_lista(cargar_usuarios_lista(), username)
+    if user and user.get('name') and str(user.get('name')).strip():
+        return str(user['name']).strip()
+    return username
+
+def mapear_nombres_usuarios() -> dict[str, str]:
+    """Devuelve un diccionario {username: display_name}."""
+    res = {}
+    for u in cargar_usuarios_lista():
+        un = u.get('username')
+        if un:
+            nm = (u.get('name') or '').strip()
+            res[un] = nm if nm else un
+    return res
+
 # -------- Persistencia de selecciones --------
 DATA_FILE = 'selected_teams.json'
 if not os.path.exists(DATA_FILE):
@@ -155,7 +174,10 @@ def inject_roles():
     def is_admin():
         u = session.get('user')
         return is_admin_user(u) if u else False
-    return dict(is_admin=is_admin)
+    def current_display_name():
+        u = session.get('user')
+        return obtener_nombre_usuario(u) if u else ""
+    return dict(is_admin=is_admin, current_display_name=current_display_name)
 
 def get_assigned_to(username: str):
     d = load_draw()
@@ -336,12 +358,14 @@ def espera():
     username = session['user']
     d = load_draw()
     assigned = d.get('assignments', {}).get(username)
+    assigned_name = obtener_nombre_usuario(assigned) if assigned else None
     actual = obtener_seleccion_de_usuario(username)
     selected_team = id_to_name(actual['equipo_id']) if actual else None
     selected_team_id = actual['equipo_id'] if actual else None
     return render_template('waiting.html',
                            draw_done=bool(d.get('done')),
                            assigned_to=assigned,
+                           assigned_to_name=assigned_name,
                            selected_team=selected_team,
                            selected_team_id=selected_team_id)
 
@@ -352,7 +376,16 @@ def admin_panel():
     if not is_admin_user(username):
         flash('Acceso restringido.', 'error')
         return redirect(url_for('espera'))
-    users_list = [u['username'] for u in cargar_usuarios_lista()]
+    users_raw = cargar_usuarios_lista()
+    users_list = []
+    user_names = {}
+    for u in users_raw:
+        un = u.get('username')
+        if un:
+            nm = (u.get('name') or '').strip()
+            users_list.append({'username': un, 'name': nm})
+            user_names[un] = nm if nm else un
+
     d = load_draw()
     items = cargar_items()
 
@@ -364,14 +397,47 @@ def admin_panel():
     for fp in raw_forbidden:
         norm = _normalize_forbidden_pair(fp)
         if norm:
-            forbidden_list.append({'giver': norm[0], 'receiver': norm[1], 'raw': f"{norm[0]}::{norm[1]}"})
+            g, r = norm[0], norm[1]
+            forbidden_list.append({
+                'giver': g,
+                'giver_name': user_names.get(g, g),
+                'receiver': r,
+                'receiver_name': user_names.get(r, r),
+                'raw': f"{g}::{r}"
+            })
 
     return render_template('admin.html',
                            users=users_list,
+                           user_names=user_names,
                            draw_done=bool(d.get('done')),
                            forbidden_pairs=forbidden_list,
                            user_has_selected=user_has_selected
                            )
+
+@app.route('/admin/update-user-name', methods=['POST'])
+@login_required
+def admin_update_user_name():
+    if not is_admin_user(session.get('user')):
+        flash('Acceso restringido.', 'error')
+        return redirect(url_for('espera'))
+    target_user = request.form.get('username', '').strip()
+    new_name = request.form.get('name', '').strip()
+    if not target_user:
+        flash('Usuario no especificado.', 'error')
+        return redirect(url_for('admin_panel'))
+    users = cargar_usuarios_lista()
+    user = buscar_usuario_en_lista(users, target_user)
+    if not user:
+        flash(f'El usuario {target_user} no existe.', 'error')
+        return redirect(url_for('admin_panel'))
+
+    user['name'] = new_name
+    guardar_usuarios_lista(users)
+    if new_name:
+        flash(f'Nombre de @{target_user} actualizado a "{new_name}".', 'success')
+    else:
+        flash(f'Nombre de @{target_user} eliminado (se usará "@{target_user}").', 'success')
+    return redirect(url_for('admin_panel'))
 
 @app.route('/admin/add-restriction', methods=['POST'])
 @login_required

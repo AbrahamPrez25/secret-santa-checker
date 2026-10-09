@@ -358,7 +358,7 @@
 
       <div class="nav-actions">
         <button class="user-pill" id="userMenuBtn" aria-expanded="false">
-          <span>👤 {{ session.get('user') }}</span>
+          <span>👤 {{ current_display_name() or session.get('user') }}</span>
           {% if is_admin() %}
             <span class="admin-tag">Admin</span>
           {% endif %}

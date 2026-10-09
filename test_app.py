@@ -199,3 +199,39 @@ def test_invalid_team_id_rejected(test_env):
 
     r = client.post("/seleccionar-equipo", data={"equipo_id": "<script>alert(1)</script>"}, follow_redirects=True)
     assert b"no es v\xc3\xa1lido" in r.data
+
+
+def test_user_display_name_and_admin_update(test_env):
+    client = test_env["client"]
+
+    # 1) Admin logs in and updates juan's visible name
+    client.post("/login", data={"username": "admin", "password": "admin123"})
+    r = client.post("/admin/update-user-name", data={"username": "juan", "name": "Juan Perez"}, follow_redirects=True)
+    assert b"actualizado" in r.data
+    assert b"Juan Perez" in r.data
+
+    # Perform draw
+    client.post("/admin/draw", data={})
+    client.post("/logout")
+
+    # 2) Check that assignments file has assignments
+    with open(test_env["draw_file"], "r", encoding="utf-8") as f:
+        d = json.load(f)
+
+    # Find who is assigned to juan
+    giver_to_juan = next(g for g, r in d["assignments"].items() if r == "juan")
+    # Giver logs in and checks /espera
+    password = "admin123" if giver_to_juan == "admin" else f"{giver_to_juan}123"
+    client.post("/login", data={"username": giver_to_juan, "password": password})
+    r = client.get("/espera")
+    assert b"Juan Perez" in r.data  # Should show the configured display name!
+    assert b"@juan" in r.data       # Subtle username tag
+    client.post("/logout")
+
+    # 3) Check fallback: who is assigned to pedro (who has NO display name set)
+    giver_to_pedro = next(g for g, r in d["assignments"].items() if r == "pedro")
+    pwd_pedro_giver = "admin123" if giver_to_pedro == "admin" else f"{giver_to_pedro}123"
+    client.post("/login", data={"username": giver_to_pedro, "password": pwd_pedro_giver})
+    r = client.get("/espera")
+    assert b"pedro" in r.data  # Fallback to username
+

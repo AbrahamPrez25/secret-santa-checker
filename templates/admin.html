@@ -199,6 +199,7 @@
     <thead>
       <tr>
         <th>Usuario</th>
+        <th>Nombre para tarjetas</th>
         <th>Rol</th>
         <th>Sorteo</th>
         <th>Selección de Equipo</th>
@@ -208,7 +209,16 @@
       {% for u in users %}
         <tr>
           <td>
-            <strong>{{ u }}</strong>
+            <strong>@{{ u.username }}</strong>
+          </td>
+          <td>
+            <form method="POST" action="{{ url_for('admin_update_user_name') }}" style="display: flex; gap: 6px; align-items: center; margin: 0;">
+              <input type="hidden" name="username" value="{{ u.username }}">
+              <input type="text" name="name" value="{{ u.name or '' }}" placeholder="{{ u.username }}" style="padding: 6px 10px; font-size: 0.88rem; border: 1px solid var(--border); border-radius: 6px; width: 150px; background: #fff;">
+              <button type="submit" class="btn btn-outline btn-sm" title="Guardar nombre" style="padding: 6px 10px; font-size: 0.8rem;">
+                💾 Guardar
+              </button>
+            </form>
           </td>
           <td>
             {% if loop.first %}
@@ -227,7 +237,7 @@
             {% endif %}
           </td>
           <td>
-            {% if user_has_selected.get(u) %}
+            {% if user_has_selected.get(u.username) %}
               <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 700; padding: 3px 10px; border-radius: 999px; font-size: 0.8rem;">
                 ✓ Equipo reservado (privado)
               </span>
@@ -266,7 +276,7 @@
     <select name="giver" class="form-select" required>
       <option value="">Seleccionar participante...</option>
       {% for u in users %}
-        <option value="{{ u }}">{{ u }}</option>
+        <option value="{{ u.username }}">{{ u.name ~ ' (@' ~ u.username ~ ')' if u.name and u.name != u.username else u.username }}</option>
       {% endfor %}
     </select>
 
@@ -275,7 +285,7 @@
     <select name="receiver" class="form-select" required>
       <option value="">Seleccionar receptor...</option>
       {% for u in users %}
-        <option value="{{ u }}">{{ u }}</option>
+        <option value="{{ u.username }}">{{ u.name ~ ' (@' ~ u.username ~ ')' if u.name and u.name != u.username else u.username }}</option>
       {% endfor %}
     </select>
 
@@ -292,7 +302,7 @@
     <div class="chips-container">
       {% for p in forbidden_pairs %}
         <div class="restriction-chip">
-          <span><strong>{{ p.giver }}</strong> ➔ 🚫 <strong>{{ p.receiver }}</strong></span>
+          <span><strong>{{ p.giver_name }}</strong> <small style="color: var(--text-muted); font-weight: normal;">(@{{ p.giver }})</small> ➔ 🚫 <strong>{{ p.receiver_name }}</strong> <small style="color: var(--text-muted); font-weight: normal;">(@{{ p.receiver }})</small></span>
           <form method="POST" action="{{ url_for('admin_remove_restriction') }}" style="margin: 0;">
             <input type="hidden" name="rule" value="{{ p.raw }}">
             <button type="submit" class="chip-remove-btn" title="Eliminar restricción">&times;</button>
