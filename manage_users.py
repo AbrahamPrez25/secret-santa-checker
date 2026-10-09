@@ -90,9 +90,15 @@ def delete_user(args):
     if idx == -1:
         print(f"ERROR: el usuario '{args.username}' no existe.", file=sys.stderr)
         sys.exit(1)
+    was_admin = (idx == 0)
     users.pop(idx)
     save_users(args.file, users)
     print(f"Usuario '{args.username}' eliminado.")
+    if was_admin:
+        if users:
+            print(f"AVISO: '{users[0]['username']}' es ahora el nuevo administrador.", file=sys.stderr)
+        else:
+            print("AVISO: No quedan usuarios registrados.", file=sys.stderr)
 
 def list_users(args):
     users = load_users(args.file)

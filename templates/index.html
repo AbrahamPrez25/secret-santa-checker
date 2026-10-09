@@ -1,398 +1,491 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LIGA COGNATIS - Selección de Equipos</title>
-    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
-    <style>
-        /* Estilo general */
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            color: #333;
-            padding: 0 10px;
-        }
+{% extends "base.html" %}
 
-        h1 {
-            text-align: center;
-            color: #333;
-        }
-        h2 {
-            text-align: center;
-            color: #333;
-        }
-        /* Contenedor principal */
-        .container {
-            width: 100%;
-            max-width: 600px;
-            padding: 20px;
-            background-color: #fff;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-            box-sizing: border-box;
-        }
+{% block title %}Selección de Equipos · Liga Cognatis{% endblock %}
 
-        /* Campo de búsqueda */
-        #search {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 20px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
+{% block styles %}
+<style>
+  .catalog-header {
+    margin-bottom: 24px;
+  }
+  .catalog-header h1 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-bottom: 6px;
+    letter-spacing: -0.02em;
+  }
+  .catalog-header p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+  }
 
-        /* Lista de equipos */
-        .team-list {
-            list-style-type: none;
-            padding: 0;
-            margin: 0;
-            width: 100%;
-            box-sizing: border-box;
-        }
+  /* Current Selection Banner */
+  .current-team-banner {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border: 2px solid #86efac;
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    box-shadow: var(--shadow-sm);
+  }
+  .current-team-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .current-crest {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: var(--shadow-sm);
+  }
 
-        .team-item {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            margin-bottom: 10px;
-            background-color: #fff;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-            box-sizing: border-box;
-        }
+  /* Search & Filter Toolbar */
+  .filter-toolbar {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .search-wrapper {
+    position: relative;
+    margin-bottom: 14px;
+  }
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    pointer-events: none;
+  }
+  .search-input {
+    width: 100%;
+    padding: 12px 14px 12px 42px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    background: var(--bg);
+    transition: all 0.2s;
+  }
+  .search-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+  }
 
-        .team-item.selected {
-            background-color: #9dd9ff;  /* Fondo azul claro */
-            border: 2px solid #007bff;  /* Borde azul */
-        }
+  .tabs-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .tabs-group {
+    display: flex;
+    gap: 6px;
+    background: var(--bg);
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .tab-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: none;
+    background: none;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .tab-btn.active {
+    background: #ffffff;
+    color: var(--text);
+    box-shadow: var(--shadow-sm);
+  }
 
-        .team-item:hover {
-            background-color: #f0f0f5;
-        }
+  .results-meta {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
 
-        .team-logo {
-            width: 40px;
-            height: 40px;
-            border-radius: 10%;
-            margin-right: 10px;
-        }
+  /* Grid of Teams */
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
 
-        /* Equipo seleccionado */
-        .selected-team {
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            color: #555;
-        }
+  .team-card-item {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    user-select: none;
+    position: relative;
+  }
+  .team-card-item:hover:not(.selected-mine) {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
 
-        .user-row{
-          display:flex; align-items:center; justify-content:center;
-          gap:10px; margin:6px 0 4px 0; flex-wrap:wrap;
-        }
-        .user-info{ color:#555; font-size:14px; }
-        .selected-info{ color:#333; font-size:14px; }
+  .team-card-item.selected-mine {
+    background: #f0fdf4;
+    border: 2px solid #22c55e;
+  }
 
-        .profile-menu{ position:relative; }
-        .profile-btn{
-          background:transparent; border:none; padding:4px; cursor:pointer;
-          border-radius:50%;
-        }
-        .profile-btn:hover{ background:#f0f0f5; }
-        .profile-btn:focus{ outline:2px solid #007bff33; }
+  .team-crest-img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    flex-shrink: 0;
+    border-radius: 6px;
+    background: #f8fafc;
+    padding: 2px;
+  }
 
-        .menu{
-          position:absolute; top:calc(100% + 6px); right:0;
-          min-width:190px; background:#fff; border:1px solid #ddd; border-radius:8px;
-          box-shadow:0 8px 24px rgba(0,0,0,.12); padding:6px; z-index:1000;
-        }
-        .menu-item,
-        .menu .as-button{
-          display:block; width:100%; text-align:left;
-          padding:8px 12px; border-radius:6px; text-decoration:none; color:#333;
-          background:none; border:none; cursor:pointer; font:inherit;
-        }
-        .menu-item:hover,
-        .menu .as-button:hover{ background:#f4f4f9; }
-        .menu-item-form{ margin:0; }
+  .team-details {
+    flex: 1;
+    min-width: 0;
+  }
+  .team-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .team-sub {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+  }
 
+  .status-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .badge-mine { background: #bbf7d0; color: #15803d; }
+  .badge-taken { background: #e2e8f0; color: #475569; }
 
-        /* Botón de envío */
-        #submitButton {
-            width: 100%;
-            padding: 10px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            display: none;
-            box-sizing: border-box;
-        }
+  /* Load More Button */
+  .load-more-box {
+    text-align: center;
+    margin: 20px 0;
+  }
+</style>
+{% endblock %}
 
-        #submitButton:hover {
-            background-color: #0056b3;
-        }
+{% block content %}
+<div class="catalog-header">
+  <h1>⚽ Selección de Equipos</h1>
+  <p>Elige tu club o selección para la Liga Cognatis. Solo un participante puede elegir cada equipo.</p>
+</div>
 
-        /* Mensajes de éxito y error */
-        .message {
-            text-align: center;
-            margin-bottom: 15px;
-            padding: 10px;
-            border-radius: 4px;
-        }
+<!-- Banner de equipo actual si ya lo tiene -->
+{% if selected_team %}
+  <div class="current-team-banner">
+    <div class="current-team-info">
+      {% if selected_team_id %}
+        <img src="{{ url_for('static', filename='images/club_logos/' + selected_team_id + '.png') }}" 
+             alt="{{ selected_team }}" 
+             class="current-crest"
+             onerror="this.style.display='none'">
+      {% endif %}
+      <div>
+        <span style="font-size: 0.75rem; font-weight: 800; color: #166534; text-transform: uppercase; letter-spacing: 0.04em;">
+          ✓ Tu equipo registrado
+        </span>
+        <div style="font-size: 1.25rem; font-weight: 800; color: #0f172a;">
+          {{ selected_team }}
+        </div>
+      </div>
+    </div>
+    <div style="font-size: 0.88rem; color: #15803d; font-weight: 600;">
+      ¿Quieres cambiarlo? Selecciona cualquier otro equipo disponible abajo.
+    </div>
+  </div>
+{% endif %}
 
-        .message.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
+<!-- Barra de búsqueda y filtros -->
+<div class="filter-toolbar">
+  <div class="search-wrapper">
+    <span class="search-icon">🔍</span>
+    <input type="text" 
+           id="teamSearch" 
+           class="search-input" 
+           placeholder="Buscar equipo por nombre (ej. Real Madrid, Argentina, Arsenal...)"
+           autocomplete="off">
+  </div>
 
-        .message.error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .message.confirm {
-            background-color: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeeba;
-        }
-        .message.confirm form{ display:inline-block; margin-left:8px; }
-        .message.confirm button{
-          padding:6px 10px; border:0; border-radius:4px; cursor:pointer;
-          background:#007bff; color:#fff;
-        }
-        /* Estilo responsive para pantallas pequeñas */
-        @media (max-width: 600px) {
-            body {
-                padding: 0 5px;
-            }
-
-            .container {
-                padding: 15px;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            }
-
-            h1 {
-                font-size: 1.5em;
-            }
-
-            h2 {
-                font-size: 1em;
-            }
-            #search {
-                font-size: 14px;
-            }
-
-            .team-item {
-                flex-direction: column; /* Para apilar logo y nombre en pantallas pequeñas */
-                align-items: center;
-                text-align: center;
-            }
-
-            .team-logo {
-                width: 50px;
-                height: 50px;
-                margin: 0 0 5px 0;
-            }
-
-            .selected-team {
-                font-size: 14px;
-            }
-
-            #submitButton {
-                font-size: 14px;
-                padding: 8px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>&#x1F1EA;&#x1F1F8; LIGA COGNATIS &#x1F1EA;&#x1F1F8;</h1>
-        {% if session.get('user') %}
-          <div class="user-row">
-            <div class="user-info">Usuario: <strong>{{ session.get('user') }}</strong></div>
-            {% if selected_team %}
-              <div class="selected-info">Equipo: <strong>{{ selected_team }}</strong></div>
-            {% endif %}
-
-            <div class="profile-menu">
-              <button id="profileBtn" class="profile-btn" aria-haspopup="true" aria-expanded="false" aria-controls="profileMenu" title="Cuenta">
-                <!-- Icono persona (SVG inline) -->
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 12c2.761 0 5-2.686 5-6s-2.239-6-5-6-5 2.686-5 6 2.239 6 5 6zm0 2c-4.418 0-8 3.134-8 7v1h16v-1c0-3.866-3.582-7-8-7z"/>
-                </svg>
-              </button>
-              <div id="profileMenu" class="menu" hidden>
-                <!-- Enlaza a tu futura página; por ahora apunta a una ruta estática que no rompe la plantilla -->
-                <a href="{{ url_for('change_password') }}" class="menu-item">Cambiar contraseña</a>
-                  {% if is_admin() %}
-                    <a href="{{ url_for('admin_panel') }}" class="menu-item">Administración</a>
-                  {% endif %}
-                <form method="POST" action="{{ url_for('logout') }}" class="menu-item-form">
-                  <button type="submit" class="menu-item as-button">Cerrar sesión</button>
-                </form>
-              </div>
-            </div>
-          </div>
-        {% endif %}
-
-        <h2>Selecciona un equipo</h2>
-        <!-- Mostrar mensaje de éxito/error arriba de la lista -->
-        {% with messages = get_flashed_messages(with_categories=True) %}
-          {% if messages %}
-            <div id="flash-messages">
-              {% for category, msg in messages %}
-                <div class="message {{ category }}">{{ msg|safe }}</div>
-              {% endfor %}
-            </div>
-          {% endif %}
-        {% endwith %}
-
-        <!-- Campo de búsqueda para filtrar equipos -->
-        <input type="text" id="search" placeholder="Buscar equipo..." onkeyup="filtrarEquipos()">
-
-
-        <!-- Mostrar equipo seleccionado y botón de envío -->
-        <div id="selectedTeamDisplay" class="selected-team"></div>
-        <form id="teamForm" method="POST" action="{{ url_for('seleccionar_equipo') }}">
-            <input type="hidden" id="equipo_id" name="equipo_id">
-            <button type="submit" id="submitButton">Enviar selección</button>
-        </form>
-
-        <!-- Lista completa de equipos y selecciones (controlada por JavaScript) -->
-        <ul id="teamList" class="team-list">
-            {% for club in club_data %}
-                <li class="team-item" onclick="seleccionarEquipo('{{ club['ID'] }}', '{{ club['Name'] }}')">
-                    <img src="{{ url_for('static', filename='images/club_logos/' + club['ID'] + '.png') }}" alt="{{ club['Name'] }}" class="team-logo" loading="lazy">
-                    <span>{{ club['Name'] }}</span>
-                </li>
-            {% endfor %}
-        </ul>
+  <div class="tabs-wrapper">
+    <div class="tabs-group">
+      <button class="tab-btn active" data-filter="all" onclick="setCategoryFilter('all', this)">
+        Todos ({{ club_data|length }})
+      </button>
+      <button class="tab-btn" data-filter="clubs" onclick="setCategoryFilter('clubs', this)">
+        Clubes
+      </button>
+      <button class="tab-btn" data-filter="intl" onclick="setCategoryFilter('intl', this)">
+        Selecciones
+      </button>
     </div>
 
-    <script>
-      let maxVisibleItems = 10; // Valor inicial que se actualizará
+    <div class="results-meta" id="resultsCount">
+      Cargando catálogo...
+    </div>
+  </div>
+</div>
 
-      // Calcula el número de elementos que caben en pantalla
-      function calcularMaxVisibleItems() {
-        const item = document.querySelector('.team-item');
-        const searchEl = document.getElementById('search');
-        if (!item || !searchEl) return;
+<!-- Contenedor del listado en cuadrícula -->
+<div class="team-grid" id="teamContainer">
+  <!-- Renderizado dinámico vía JavaScript para máximo rendimiento -->
+</div>
 
-        const itemHeight = item.clientHeight || 0;
-        const searchHeight = searchEl.clientHeight || 0;
-        maxVisibleItems = Math.max(
-          1,
-          Math.floor((window.innerHeight - searchHeight - 100) / (itemHeight || 1)) - 2
-        );
+<!-- Botón Cargar Más -->
+<div class="load-more-box" id="loadMoreBox" style="display: none;">
+  <button class="btn btn-secondary" onclick="loadMoreItems()">
+    Cargar más equipos ▼
+  </button>
+</div>
+
+<!-- Formulario oculto para selección directa (cuando el usuario no tiene equipo previo) -->
+<form id="directSelectForm" method="POST" action="{{ url_for('seleccionar_equipo') }}" style="display: none;">
+  <input type="hidden" name="equipo_id" id="directEquipoId">
+</form>
+
+<!-- Modal moderno de confirmación de cambio de equipo -->
+<div class="modal-backdrop" id="changeModal">
+  <div class="modal-dialog">
+    <div class="modal-title">¿Confirmar cambio de equipo?</div>
+    <div class="modal-body" id="modalChangeBody">
+      <!-- Texto inyectado por JS -->
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" onclick="closeChangeModal()">Cancelar</button>
+      <form id="confirmChangeForm" method="POST" action="{{ url_for('confirmar_cambio') }}" style="margin: 0;">
+        <input type="hidden" name="new_id" id="modalNewId">
+        <button type="submit" class="btn btn-primary">Confirmar cambio</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Datos del usuario actual
+  const CURRENT_USER_TEAM_ID = {{ (selected_team_id|tojson) if selected_team_id else 'null' }};
+  const CURRENT_USER_TEAM_NAME = {{ (selected_team|tojson) if selected_team else 'null' }};
+
+  // Catálogo completo serializado para búsqueda instantánea ultrarrápida
+  const ALL_TEAMS = [
+    {% for club in club_data %}
+      {
+        id: {{ club['ID']|tojson }},
+        name: {{ club['Name']|tojson }},
+        isIntl: {{ ('true' if club['Name'].startswith('Selección:') else 'false') }}
+      },
+    {% endfor %}
+  ];
+
+  // Helper para eliminar tildes y normalizar texto
+  function normalizeText(str) {
+    return (str || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  }
+
+  // Pre-computar búsqueda en minúsculas y sin acentos
+  ALL_TEAMS.forEach(t => {
+    t.normalized = normalizeText(t.name);
+  });
+
+  let currentCategory = 'all'; // 'all', 'clubs', 'intl'
+  let currentSearch = '';
+  let filteredTeams = [];
+  let renderedCount = 0;
+  const PAGE_SIZE = 48;
+
+  function filterTeams() {
+    filteredTeams = ALL_TEAMS.filter(t => {
+      // Filtro de categoría
+      if (currentCategory === 'clubs' && t.isIntl) return false;
+      if (currentCategory === 'intl' && !t.isIntl) return false;
+
+      // Filtro de texto
+      if (currentSearch && !t.normalized.includes(currentSearch)) return false;
+
+      return true;
+    });
+
+    renderedCount = 0;
+    const container = document.getElementById('teamContainer');
+    container.innerHTML = '';
+    renderBatch();
+    updateResultsMeta();
+  }
+
+  function renderBatch() {
+    const container = document.getElementById('teamContainer');
+    const loadMoreBox = document.getElementById('loadMoreBox');
+    const start = renderedCount;
+    const end = Math.min(start + PAGE_SIZE, filteredTeams.length);
+
+    if (start >= end) {
+      if (filteredTeams.length === 0) {
+        container.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 48px 16px; color: var(--text-muted);">
+            <div style="font-size: 2.5rem; margin-bottom: 8px;">🔍</div>
+            <div style="font-weight: 700; font-size: 1.1rem; color: var(--text);">No se encontraron equipos</div>
+            <div>Prueba con otro término de búsqueda o cambia de categoría.</div>
+          </div>
+        `;
+      }
+      loadMoreBox.style.display = 'none';
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+
+    for (let i = start; i < end; i++) {
+      const team = filteredTeams[i];
+      const isMine = CURRENT_USER_TEAM_ID && (String(team.id) === String(CURRENT_USER_TEAM_ID));
+
+      const card = document.createElement('div');
+      card.className = 'team-card-item' + (isMine ? ' selected-mine' : '');
+
+      card.dataset.id = team.id;
+      card.dataset.name = team.name;
+
+      let badgeHtml = '';
+      if (isMine) {
+        badgeHtml = `<span class="status-badge badge-mine">✓ Tu equipo</span>`;
+      } else {
+        badgeHtml = `<span>${team.isIntl ? '🌍 Selección' : '⚽ Club'}</span>`;
       }
 
-      // Eliminar tildes de una cadena
-      function removeDiacritics(text) {
-        return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      card.innerHTML = `
+        <img src="/static/images/club_logos/${encodeURIComponent(team.id)}.png" 
+             alt="${team.name}" 
+             class="team-crest-img"
+             loading="lazy"
+             onerror="this.style.opacity='0.2'">
+        <div class="team-details">
+          <div class="team-name" title="${team.name}">${team.name}</div>
+          <div class="team-sub">${badgeHtml}</div>
+        </div>
+      `;
+
+      card.addEventListener('click', () => handleTeamClick(team));
+
+      fragment.appendChild(card);
+    }
+
+    container.appendChild(fragment);
+    renderedCount = end;
+
+    loadMoreBox.style.display = (renderedCount < filteredTeams.length) ? 'block' : 'none';
+  }
+
+  function loadMoreItems() {
+    renderBatch();
+    updateResultsMeta();
+  }
+
+  function updateResultsMeta() {
+    const meta = document.getElementById('resultsCount');
+    if (!meta) return;
+    meta.textContent = `Mostrando ${Math.min(renderedCount, filteredTeams.length)} de ${filteredTeams.length} equipos`;
+  }
+
+  function setCategoryFilter(cat, btn) {
+    currentCategory = cat;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    filterTeams();
+  }
+
+  // Interacción al hacer clic en un equipo disponible
+  function handleTeamClick(team) {
+    if (CURRENT_USER_TEAM_ID) {
+      if (String(team.id) === String(CURRENT_USER_TEAM_ID)) {
+        return; // Ya es el suyo
       }
+      // Si ya tiene un equipo diferente, mostrar el modal de confirmación limpio
+      openChangeModal(team);
+    } else {
+      // Primera selección: enviar directamente
+      document.getElementById('directEquipoId').value = team.id;
+      document.getElementById('directSelectForm').submit();
+    }
+  }
 
-      // Filtrado en tiempo real
-      function filtrarEquipos() {
-        calcularMaxVisibleItems();
-        const searchInput = document.getElementById('search');
-        const searchTerm = removeDiacritics((searchInput ? searchInput.value : '').trim().toLowerCase());
-        const teamItems = document.querySelectorAll('.team-item');
-        let displayed = 0;
+  function openChangeModal(newTeam) {
+    const modal = document.getElementById('changeModal');
+    const body = document.getElementById('modalChangeBody');
+    const hiddenInput = document.getElementById('modalNewId');
 
-        teamItems.forEach(item => {
-          const span = item.querySelector('span');
-          const teamName = span ? removeDiacritics(span.textContent.toLowerCase()) : '';
-          const match = teamName.includes(searchTerm);
+    body.innerHTML = `
+      Actualmente tu equipo es <strong>${CURRENT_USER_TEAM_NAME}</strong>.<br><br>
+      ¿Deseas cambiarlo por <strong>${newTeam.name}</strong>?
+    `;
+    hiddenInput.value = newTeam.id;
+    modal.classList.add('show');
+  }
 
-          // Mostrar solo los primeros elementos que caben en la pantalla
-          item.style.display = match && displayed < maxVisibleItems ? 'flex' : 'none';
-          if (match) displayed++;
-        });
-      }
+  function closeChangeModal() {
+    const modal = document.getElementById('changeModal');
+    modal.classList.remove('show');
+  }
 
-      // Seleccionar un equipo
-      function seleccionarEquipo(equipoID, equipoName) {
-        // Quitar la clase 'selected' del elemento previamente seleccionado
-        const previouslySelected = document.querySelector('.team-item.selected');
-        if (previouslySelected) {
-          previouslySelected.classList.remove('selected');
-        }
-
-        // Añadir la clase 'selected' al equipo actualmente seleccionado
-        const selector = `.team-item[onclick="seleccionarEquipo('${equipoID}', '${equipoName}')"]`;
-        const selectedItem = document.querySelector(selector);
-        if (selectedItem) {
-          selectedItem.classList.add('selected');
-        }
-
-        document.getElementById('equipo_id').value = equipoID;
-        document.getElementById('selectedTeamDisplay').textContent = `Equipo seleccionado: ${equipoName}`;
-        document.getElementById('submitButton').style.display = 'block';
-      }
-
-      // Inicializar menú de perfil (icono → desplegable)
-      function initProfileMenu() {
-        const btn = document.getElementById('profileBtn');
-        const menu = document.getElementById('profileMenu');
-        if (!btn || !menu) return;
-
-        const closeMenu = () => {
-          if (!menu.hidden) {
-            menu.hidden = true;
-            btn.setAttribute('aria-expanded', 'false');
-          }
-        };
-
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const willOpen = menu.hidden;       // estado que tendrá tras el click
-          menu.hidden = !menu.hidden;         // toggle
-          btn.setAttribute('aria-expanded', String(willOpen));
-        });
-
-        // Cerrar al hacer click fuera
-        document.addEventListener('click', (e) => {
-          if (!menu.hidden && !menu.contains(e.target) && e.target !== btn) {
-            closeMenu();
-          }
-        });
-
-        // Cerrar con Escape
-        document.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape') closeMenu();
-        });
-      }
-
-      // Al cargar la página
-      document.addEventListener('DOMContentLoaded', () => {
-        calcularMaxVisibleItems();
-        filtrarEquipos();
-        initProfileMenu();
+  // Event Listeners
+  document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('teamSearch');
+    if (searchInput) {
+      let debounceTimer;
+      searchInput.addEventListener('input', (e) => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          currentSearch = normalizeText(e.target.value.trim());
+          filterTeams();
+        }, 150);
       });
+    }
 
-      // Recalcular al redimensionar
-      window.addEventListener('resize', () => {
-        calcularMaxVisibleItems();
-        filtrarEquipos();
-      });
-    </script>
-
-</body>
-</html>
+    // Inicializar catálogo
+    filterTeams();
+  });
+</script>
+{% endblock %}

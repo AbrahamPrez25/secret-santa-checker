@@ -1,0 +1,20 @@
+# Entornos virtuales
+.venv/
+venv/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Datos dinámicos locales (credenciales y estado del juego)
+.env
+users.json
+draw.json
+selected_teams.json
+
+# IDE
+.idea/
+.vscode/

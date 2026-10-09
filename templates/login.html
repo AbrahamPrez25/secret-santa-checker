@@ -1,34 +1,190 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LIGA COGNATIS - Login</title>
-  <style>
-    body{font-family:Arial, sans-serif;background:#f4f4f9;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
-    h1 {text-align: center; color: #333;}
-    h2 {text-align: center; color: #333;}
-    .card{background:#fff;max-width:360px;width:100%;padding:20px;border-radius:8px;box-shadow:0 4px 8px rgba(0,0,0,.1)}
-    input{width:100%;padding:10px;margin:8px 0;border:1px solid #ddd;border-radius:4px;box-sizing:border-box}
-    button{width:100%;padding:10px;border:none;border-radius:4px;background:#007bff;color:#fff;cursor:pointer}
-    button:hover{background:#0056b3}
-    #msg{margin-bottom:10px;padding:10px;border-radius:4px;text-align:center}
-    .error{background:#f8d7da;color:#721c24;border:1px solid #f5c6cb}
-  </style>
-</head>
-<body>
-  <div class="card">
-      <h1>&#x1F1EA;&#x1F1F8; LIGA COGNATIS &#x1F1EA;&#x1F1F8;</h1>
-    <h2>Iniciar sesión</h2>
-    {% with messages = get_flashed_messages(with_categories=True) %}
-      {% if messages %}
-        <div id="msg" class="{{ messages[0][0] }}">{{ messages[0][1] }}</div>
-      {% endif %}
-    {% endwith %}
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión · Liga Cognatis{% endblock %}
+
+{% block styles %}
+<style>
+  /* Centrado vertical y horizontal perfecto */
+  .login-wrapper {
+    min-height: calc(100vh - 120px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 12px;
+  }
+
+  .login-card {
+    max-width: 420px;
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    padding: 40px 32px;
+    text-align: center;
+    box-sizing: border-box;
+  }
+
+  .login-icon {
+    font-size: 3.5rem;
+    margin-bottom: 12px;
+    line-height: 1;
+  }
+
+  .login-title {
+    font-size: 1.65rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .login-subtitle {
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    margin-bottom: 28px;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+    text-align: left;
+    width: 100%;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .form-input-styled {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 13px 16px !important;
+    border: 1.5px solid var(--border) !important;
+    border-radius: 10px !important;
+    font-size: 1rem !important;
+    font-family: inherit !important;
+    color: var(--text) !important;
+    background: #ffffff !important;
+    transition: all 0.2s ease !important;
+    display: block !important;
+  }
+
+  .form-input-styled:focus {
+    outline: none !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.15) !important;
+  }
+
+  .pwd-wrapper {
+    position: relative;
+    width: 100%;
+  }
+
+  .pwd-toggle-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--primary);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background 0.15s;
+    user-select: none;
+  }
+
+  .pwd-toggle-btn:hover {
+    background: var(--primary-light);
+  }
+
+  .login-submit-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    border-radius: 10px;
+    margin-top: 10px;
+    background: var(--primary);
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    font-family: inherit;
+  }
+
+  .login-submit-btn:hover {
+    background: var(--primary-hover);
+  }
+
+  .login-submit-btn:active {
+    transform: scale(0.99);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-wrapper">
+  <div class="login-card">
+    <div class="login-icon">🎁⚽</div>
+    <h1 class="login-title">LIGA COGNATIS</h1>
+    <p class="login-subtitle">Amigo Invisible & Selección de Equipos</p>
+
     <form method="POST" action="{{ url_for('login') }}">
-      <input type="text"   name="username" placeholder="Usuario" required autofocus>
-      <input type="password" name="password" placeholder="Contraseña" required>
-      <button type="submit">Entrar</button>
+      <div class="form-group">
+        <label for="username" class="form-label">Usuario</label>
+        <input type="text" 
+               id="username" 
+               name="username" 
+               class="form-input-styled" 
+               placeholder="Tu nombre de usuario" 
+               required 
+               autofocus>
+      </div>
+
+      <div class="form-group">
+        <label for="password" class="form-label">Contraseña</label>
+        <div class="pwd-wrapper">
+          <input type="password" 
+                 id="password" 
+                 name="password" 
+                 class="form-input-styled" 
+                 style="padding-right: 70px !important;" 
+                 placeholder="••••••••" 
+                 required>
+          <button type="button" 
+                  id="togglePassword" 
+                  class="pwd-toggle-btn">
+            Ver
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="login-submit-btn">
+        Iniciar sesión ➔
+      </button>
     </form>
   </div>
-</body>
-</html>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const toggleBtn = document.getElementById('togglePassword');
+  const passInput = document.getElementById('password');
+  if (toggleBtn && passInput) {
+    toggleBtn.addEventListener('click', () => {
+      const isPwd = passInput.type === 'password';
+      passInput.type = isPwd ? 'text' : 'password';
+      toggleBtn.textContent = isPwd ? 'Ocultar' : 'Ver';
+    });
+  }
+</script>
+{% endblock %}

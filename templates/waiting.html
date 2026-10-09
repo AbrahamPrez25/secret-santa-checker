@@ -1,124 +1,268 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🎁 LIGA COGNATIS</title>
-  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
-  <style>
-    body{font-family:Arial,sans-serif;background:#f4f4f9;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:10px}
-    .card{background:#fff;max-width:460px;width:100%;padding:20px;border-radius:8px;box-shadow:0 4px 8px rgba(0,0,0,.1);text-align:center}
-    .btn{display:inline-block;margin-top:14px;padding:10px 14px;border:0;border-radius:6px;background:#007bff;color:#fff;text-decoration:none;cursor:pointer}
-    .btn:hover{background:#0056b3}
-    .msg{font-size:1rem;color:#333}
-    .who{font-size:1.1rem;font-weight:bold;color:#222;margin-top:8px}
-    .user-row{
-      display:flex; align-items:center; justify-content:center;
-      gap:10px; margin:6px 0 4px 0; flex-wrap:wrap;
-    }
-    .user-info{ color:#555; font-size:14px; }
-    .selected-info{ color:#333; font-size:14px; }
+{% extends "base.html" %}
 
-    .profile-menu{ position:relative; }
-    .profile-btn{
-      background:transparent; border:none; padding:4px; cursor:pointer;
-      border-radius:50%;
-    }
-    .profile-btn:hover{ background:#f0f0f5; }
-    .profile-btn:focus{ outline:2px solid #007bff33; }
+{% block title %}Mi Amigo Invisible · Liga Cognatis{% endblock %}
 
-    .menu{
-      position:absolute; top:calc(100% + 6px); right:0;
-      min-width:190px; background:#fff; border:1px solid #ddd; border-radius:8px;
-      box-shadow:0 8px 24px rgba(0,0,0,.12); padding:6px; z-index:1000;
-    }
-    .menu-item,
-    .menu .as-button{
-      display:block; width:100%; text-align:left;
-      padding:8px 12px; border-radius:6px; text-decoration:none; color:#333;
-      background:none; border:none; cursor:pointer; font:inherit;
-    }
-    .menu-item:hover,
-    .menu .as-button:hover{ background:#f4f4f9; }
-    .menu-item-form{ margin:0; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>🎁 LIGA COGNATIS</h1>
-    {% if session.get('user') %}
-      <div class="user-row">
-        <div class="user-info">Usuario: <strong>{{ session.get('user') }}</strong></div>
-        {% if selected_team %}
-          <div class="selected-info">Equipo: <strong>{{ selected_team }}</strong></div>
-        {% endif %}
+{% block styles %}
+<style>
+  .reveal-wrapper {
+    max-width: 520px;
+    margin: 0 auto;
+    text-align: center;
+  }
 
-        <div class="profile-menu">
-          <button id="profileBtn" class="profile-btn" aria-haspopup="true" aria-expanded="false" aria-controls="profileMenu" title="Cuenta">
-            <!-- Icono persona (SVG inline) -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 12c2.761 0 5-2.686 5-6s-2.239-6-5-6-5 2.686-5 6 2.239 6 5 6zm0 2c-4.418 0-8 3.134-8 7v1h16v-1c0-3.866-3.582-7-8-7z"/>
-            </svg>
-          </button>
-          <div id="profileMenu" class="menu" hidden>
-            <a href="{{ url_for('change_password') }}" class="menu-item">Cambiar contraseña</a>
-            <form method="POST" action="{{ url_for('logout') }}" class="menu-item-form">
-              <button type="submit" class="menu-item as-button">Cerrar sesión</button>
-            </form>
+  /* 3D Flip Card Container */
+  .card-container {
+    perspective: 1000px;
+    margin: 24px 0;
+  }
+
+  .secret-card {
+    position: relative;
+    width: 100%;
+    min-height: 260px;
+    border-radius: 16px;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+    cursor: pointer;
+  }
+
+  .secret-card.flipped {
+    transform: rotateY(180deg);
+  }
+
+  /* Front (Closed State) */
+  .card-face {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0; left: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 16px;
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .card-front {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #ffffff;
+    border: 2px dashed #38bdf8;
+  }
+
+  .card-front:hover {
+    border-color: #f59e0b;
+    transform: scale(1.01);
+    transition: all 0.2s;
+  }
+
+  .gift-icon {
+    font-size: 3.8rem;
+    margin-bottom: 12px;
+    animation: bounce 2s infinite ease-in-out;
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  .card-front h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .card-front p {
+    font-size: 0.88rem;
+    color: #94a3b8;
+  }
+
+  /* Back (Revealed State) */
+  .card-back {
+    background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+    color: #ffffff;
+    transform: rotateY(180deg);
+    border: 2px solid #86efac;
+  }
+
+  .recipient-badge {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fef08a;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 4px 12px;
+    border-radius: 999px;
+    margin-bottom: 12px;
+  }
+
+  .recipient-name {
+    font-size: 2.2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #ffffff;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    margin-bottom: 8px;
+  }
+
+  .recipient-subtitle {
+    font-size: 0.9rem;
+    color: #bbf7d0;
+  }
+
+  /* Team Card */
+  .team-card {
+    background: #ffffff;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 20px;
+    margin-top: 24px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    text-align: left;
+  }
+  .team-badge-icon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #f1f5f9;
+    padding: 4px;
+  }
+
+  /* Waiting state card */
+  .waiting-box {
+    padding: 48px 24px;
+    text-align: center;
+  }
+  .waiting-icon {
+    font-size: 4rem;
+    margin-bottom: 16px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reveal-wrapper">
+
+  {% if draw_done %}
+    <h1 style="font-size: 1.7rem; font-weight: 800; margin-bottom: 6px;">🎁 Tu Amigo Invisible</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      El sorteo oficial ha concluido. Toca el sobre para desvelar a quién le regalas.
+    </p>
+
+    <!-- Card interactiva 3D Flip -->
+    <div class="card-container">
+      <div class="secret-card" id="secretCard" onclick="toggleReveal()">
+        
+        <!-- Frente (Oculto) -->
+        <div class="card-face card-front">
+          <div class="gift-icon">🎁</div>
+          <h3>Sobre confidencial</h3>
+          <p>Toca para abrir y revelar destinatario</p>
+          <div style="margin-top: 16px;">
+            <span class="btn btn-primary btn-sm">Abrir sobre 👁️</span>
           </div>
         </div>
+
+        <!-- Reverso (Revelado) -->
+        <div class="card-face card-back">
+          <div class="recipient-badge">Te ha tocado regalar a:</div>
+          <div class="recipient-name">{{ assigned_to if assigned_to else "(Sin asignación)" }}</div>
+          <div class="recipient-subtitle">¡Guarda el secreto y prepárale el mejor regalo! ⚽🎁</div>
+          <div style="margin-top: 20px;">
+            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); toggleReveal();" style="background: rgba(255,255,255,0.25); color: #fff; border: 1px solid rgba(255,255,255,0.4);">
+              Ocultar de nuevo 🙈
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Sección de selección de equipo -->
+    {% if selected_team %}
+      <div class="team-card">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          {% if selected_team_id %}
+            <img src="{{ url_for('static', filename='images/club_logos/' + selected_team_id + '.png') }}" 
+                 alt="{{ selected_team }}" 
+                 class="team-badge-icon"
+                 onerror="this.style.display='none'">
+          {% endif %}
+          <div>
+            <div style="font-size: 0.8rem; color: var(--success); font-weight: 700; text-transform: uppercase;">
+              ✓ Tu equipo seleccionado
+            </div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: var(--text);">
+              {{ selected_team }}
+            </div>
+          </div>
+        </div>
+        <a href="{{ url_for('index') }}" class="btn btn-outline btn-sm">
+          Cambiar ⚽
+        </a>
+      </div>
+    {% else %}
+      <div class="card" style="margin-top: 24px; text-align: center; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #86efac;">
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: #166534; margin-bottom: 6px;">
+          ⚽ Siguiente paso: Elige tu equipo
+        </h3>
+        <p style="font-size: 0.9rem; color: #15803d; margin-bottom: 16px;">
+          Cada participante juega con un club o selección única. ¡Elige el tuyo antes de que otro lo reserve!
+        </p>
+        <a href="{{ url_for('index') }}" class="btn btn-success">
+          Ir a elegir mi equipo ➔
+        </a>
       </div>
     {% endif %}
 
-    {% if draw_done %}
-      <p class="msg">Sorteo realizado.</p>
-      {% if assigned_to %}
-        <p class="who">Te ha tocado regalarle a: <strong>{{ assigned_to }}</strong></p>
-      {% else %}
-        <p class="msg">No hay asignación para tu usuario.</p>
+  {% else %}
+    <!-- Estado de espera antes del sorteo -->
+    <div class="card waiting-box">
+      <div class="waiting-icon">⏳</div>
+      <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 8px;">
+        Esperando el sorteo
+      </h2>
+      <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 400px; margin: 0 auto 24px;">
+        El administrador aún no ha puesto en marcha el sorteo. Te avisaremos cuando se hayan repartido las parejas.
+      </p>
+
+      {% if is_admin() %}
+        <div style="background: #f3e8ff; border: 1px solid #d8b4fe; border-radius: 12px; padding: 16px; margin-top: 16px;">
+          <p style="color: #6b21a8; font-weight: 600; font-size: 0.9rem; margin-bottom: 12px;">
+            Eres el administrador. Puedes configurar restricciones y realizar el sorteo cuando quieras:
+          </p>
+          <a href="{{ url_for('admin_panel') }}" class="btn btn-primary" style="background: #7c3aed;">
+            Ir al Panel de Administración ⚙️
+          </a>
+        </div>
       {% endif %}
-      <a class="btn" href="{{ url_for('index') }}">Elegir equipo</a>
-    {% else %}
-      <p class="msg">Esperando que el administrador realice el sorteo…</p>
-    {% endif %}
-  </div>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
-  // Inicializar menú de perfil (igual que en index.html)
-  function initProfileMenu() {
-    const btn = document.getElementById('profileBtn');
-    const menu = document.getElementById('profileMenu');
-    if (!btn || !menu) return;
+  let hasConfettied = false;
 
-    const closeMenu = () => {
-      if (!menu.hidden) {
-        menu.hidden = true;
-        btn.setAttribute('aria-expanded', 'false');
-      }
-    };
+  function toggleReveal() {
+    const card = document.getElementById('secretCard');
+    if (!card) return;
+    const isFlipped = card.classList.toggle('flipped');
 
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const willOpen = menu.hidden;       // estado que tendrá tras el click
-      menu.hidden = !menu.hidden;         // toggle
-      btn.setAttribute('aria-expanded', String(willOpen));
-    });
-
-    // Cerrar al hacer click fuera
-    document.addEventListener('click', (e) => {
-      if (!menu.hidden && !menu.contains(e.target) && e.target !== btn) {
-        closeMenu();
-      }
-    });
-
-    // Cerrar con Escape
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeMenu();
-    });
+    if (isFlipped && !hasConfettied) {
+      fireConfetti(3000);
+      hasConfettied = true;
+    }
   }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    initProfileMenu();
-  });
 </script>
-
-</body>
-</html>
+{% endblock %}

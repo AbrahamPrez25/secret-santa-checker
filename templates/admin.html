@@ -1,88 +1,357 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin · Sorteo</title>
-  <style>
-    body{font-family:Arial,sans-serif;background:#f4f4f9;display:flex;align-items:flex-start;justify-content:center;min-height:100vh;margin:0;padding:20px}
-    .card{background:#fff;max-width:720px;width:100%;padding:20px;border-radius:8px;box-shadow:0 4px 8px rgba(0,0,0,.1)}
-    h1{margin:0 0 10px 0}
-    ul{margin:8px 0 16px 0;padding-left:18px}
-    .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#e9ecef;margin:0 6px 6px 0}
-    .pill.done{background:#d4edda;color:#155724;border:1px solid #c3e6cb}
-    .pill .check{margin-left:6px}
-    .btn{display:inline-block;padding:10px 14px;border:0;border-radius:6px;background:#007bff;color:#fff;text-decoration:none;cursor:pointer}
-    .btn:hover{background:#0056b3}
-    .btn.danger{background:#e03131}
-    .btn.danger:hover{background:#c92a2a}
-    .note{color:#555;margin:6px 0 14px 0}
-    textarea{width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;padding:8px}
-  </style>
-</head>
-<body>
-  <div class="card">
-      <form method="POST" action="{{ url_for('logout') }}" style="text-align:right;margin-bottom:8px">
-        <button type="submit" class="btn danger">Cerrar sesión</button>
-      </form>
-    <h1>Panel de administración</h1>
-    {% if draw_done %}
-      <p class="note">El sorteo ya está marcado como realizado.</p>
-    {% else %}
-      <p class="note">Aún no se ha realizado el sorteo. Revisa los usuarios y las restricciones.</p>
-    {% endif %}
+{% extends "base.html" %}
 
-    <h3>Usuarios</h3>
-    {% if users %}
-      <div>
-        {% for u in users %}
-          {% if draw_done %}
-            {% if selected_users and (u in selected_users) %}
-                <span class="pill done">{{ u }} <span class="check">✓</span></span>
-            {% else %}
-                <span class="pill">{{ u }}</span>
-            {% endif %}
-          {% else %}
-            <span class="pill">{{ u }}</span>
-          {% endif %}
-        {% endfor %}
-      </div>
-    {% else %}
-      <p>(No hay usuarios)</p>
-    {% endif %}
+{% block title %}Panel de Administración · Liga Cognatis{% endblock %}
 
-    {% if draw_done %}
-      <h3 style="margin-top:18px">Acciones</h3>
-      <form method="POST" action="{{ url_for('admin_reset_draw') }}" onsubmit="return confirm('Vas a deshacer el sorteo. ¿Estás seguro?');">
-        <button type="submit" class="btn danger">Deshacer sorteo</button>
-      </form>
-      <p class="note">El sorteo está realizado. Para cambiar destinatarios, primero deshaz el sorteo.</p>
-    {% else %}
-      <h3 style="margin-top:18px">Restricciones (opcional)</h3>
-      <p class="note">
-        Pega aquí el resultado anterior o parejas prohibidas (una por línea):
-        <code>A:B</code> · <code>A -> B</code> · <code>A,B</code>
-      </p>
-      <form method="POST" action="{{ url_for('admin_draw') }}">
-        <textarea name="forbidden_text" rows="6" placeholder="Ejemplo:
-    Jorge:Pedro
-    Abraham -> Jorge
-    Pedro,Abraham"></textarea>
-        <div style="margin-top:10px">
-          <button type="submit" class="btn">Realizar sorteo</button>
-        </div>
-      </form>
-    {% endif %}
+{% block styles %}
+<style>
+  .admin-header {
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .admin-header h1 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+    letter-spacing: -0.02em;
+  }
+  .admin-header p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+  }
 
+  /* Metric KPI Cards */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .metric-card {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .metric-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+  }
+  .metric-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--text);
+  }
 
-    {% if forbidden_pairs %}
-      <h3 style="margin-top:18px">Parejas prohibidas guardadas (histórico)</h3>
-      <ul>
-        {% for p in forbidden_pairs %}
-          <li>{{ p }}</li>
-        {% endfor %}
-      </ul>
-    {% endif %}
+  /* Section Title */
+  .section-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
 
+  /* Participants Table */
+  .table-responsive {
+    overflow-x: auto;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: #ffffff;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 28px;
+  }
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.92rem;
+  }
+  .admin-table th {
+    background: #f8fafc;
+    padding: 12px 16px;
+    font-weight: 700;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .admin-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  .admin-table tr:last-child td {
+    border-bottom: none;
+  }
+  .admin-table tr:hover {
+    background: #f8fafc;
+  }
+
+  /* Restrictions Chips */
+  .chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .restriction-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .chip-remove-btn {
+    background: none;
+    border: none;
+    color: var(--danger);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    line-height: 1;
+  }
+  .chip-remove-btn:hover {
+    color: var(--danger-hover);
+  }
+
+  /* Restrictions Interactive Form */
+  .restriction-builder {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .form-select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    background: #ffffff;
+    min-width: 160px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+  <div>
+    <h1>⚙️ Panel de Administración</h1>
+    <p>Supervisa a los participantes, configura restricciones y gestiona el sorteo.</p>
   </div>
-</body>
-</html>
+  <div style="display: flex; gap: 8px;">
+    <a href="{{ url_for('espera') }}" class="btn btn-outline btn-sm">🎁 Ver mi asignación</a>
+    <a href="{{ url_for('index') }}" class="btn btn-outline btn-sm">⚽ Ver catálogo</a>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+{% set total_users = users|length %}
+{% set total_selected = user_has_selected|length %}
+<div class="metrics-grid">
+  <div class="metric-card">
+    <div class="metric-label">Participantes</div>
+    <div class="metric-value">{{ total_users }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Estado del sorteo</div>
+    <div class="metric-value" style="font-size: 1.4rem; color: {% if draw_done %}var(--success){% else %}var(--warning){% endif %};">
+      {% if draw_done %}✓ Realizado{% else %}⏳ Pendiente{% endif %}
+    </div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-label">Equipos elegidos</div>
+    <div class="metric-value">
+      {{ total_selected }} <span style="font-size: 1rem; color: var(--text-muted); font-weight: 500;">/ {{ total_users }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Tabla de Participantes y Equipos -->
+<div class="section-title">
+  <span>👥 Participantes y Estado de Selección</span>
+</div>
+<div class="table-responsive">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>Usuario</th>
+        <th>Rol</th>
+        <th>Sorteo</th>
+        <th>Selección de Equipo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+        <tr>
+          <td>
+            <strong>{{ u }}</strong>
+          </td>
+          <td>
+            {% if loop.first %}
+              <span class="badge" style="background: #f3e8ff; color: #7c3aed; font-weight: 700; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem;">
+                Administrador
+              </span>
+            {% else %}
+              <span style="color: var(--text-muted); font-size: 0.85rem;">Participante</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if draw_done %}
+              <span style="color: var(--success); font-weight: 600;">✓ Asignado</span>
+            {% else %}
+              <span style="color: var(--text-muted);">En espera</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if user_has_selected.get(u) %}
+              <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 700; padding: 3px 10px; border-radius: 999px; font-size: 0.8rem;">
+                ✓ Equipo reservado (privado)
+              </span>
+            {% else %}
+              <span style="color: #94a3b8; font-style: italic; font-size: 0.85rem;">
+                Pendiente de elección
+              </span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Gestión de Restricciones -->
+<div class="card">
+  <div class="section-title">
+    <span>🔒 Constructor de Parejas Prohibidas</span>
+    {% if forbidden_pairs %}
+      <form method="POST" action="{{ url_for('admin_clear_restrictions') }}" style="margin: 0;" onsubmit="return confirm('¿Seguro que deseas vaciar todas las restricciones guardadas?');">
+        <button type="submit" class="btn btn-outline btn-sm" style="color: var(--danger); border-color: #fca5a5;">
+          Limpiar histórico 🗑️
+        </button>
+      </form>
+    {% endif %}
+  </div>
+
+  <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 14px;">
+    Evita que ciertas personas se regalen entre sí (por ejemplo, parejas de sorteos anteriores).
+  </p>
+
+  <!-- Añadir restricción visual e interactiva -->
+  <form method="POST" action="{{ url_for('admin_add_restriction') }}" class="restriction-builder">
+    <label style="font-weight: 600; font-size: 0.88rem;">Regala:</label>
+    <select name="giver" class="form-select" required>
+      <option value="">Seleccionar participante...</option>
+      {% for u in users %}
+        <option value="{{ u }}">{{ u }}</option>
+      {% endfor %}
+    </select>
+
+    <span style="color: var(--danger); font-weight: 700;">➔ No regalará a:</span>
+
+    <select name="receiver" class="form-select" required>
+      <option value="">Seleccionar receptor...</option>
+      {% for u in users %}
+        <option value="{{ u }}">{{ u }}</option>
+      {% endfor %}
+    </select>
+
+    <button type="submit" class="btn btn-secondary btn-sm" style="margin-left: auto;">
+      + Añadir restricción
+    </button>
+  </form>
+
+  <!-- Chips de restricciones actuales -->
+  {% if forbidden_pairs %}
+    <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-top: 16px;">
+      Restricciones activas en memoria:
+    </div>
+    <div class="chips-container">
+      {% for p in forbidden_pairs %}
+        <div class="restriction-chip">
+          <span><strong>{{ p.giver }}</strong> ➔ 🚫 <strong>{{ p.receiver }}</strong></span>
+          <form method="POST" action="{{ url_for('admin_remove_restriction') }}" style="margin: 0;">
+            <input type="hidden" name="rule" value="{{ p.raw }}">
+            <button type="submit" class="chip-remove-btn" title="Eliminar restricción">&times;</button>
+          </form>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div style="color: var(--text-muted); font-size: 0.88rem; font-style: italic; margin-top: 8px;">
+      No hay parejas prohibidas configuradas actualmente.
+    </div>
+  {% endif %}
+</div>
+
+<!-- Realizar o Deshacer Sorteo -->
+<div class="card" style="border-left: 4px solid {% if draw_done %}var(--danger){% else %}var(--primary){% endif %};">
+  <div class="section-title">
+    <span>🎲 Acción del Sorteo</span>
+  </div>
+
+  {% if draw_done %}
+    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 16px;">
+      El sorteo está actualmente <strong>realizado</strong> y los participantes ya pueden ver sus destinatarios y elegir equipo.
+    </p>
+    <form method="POST" action="{{ url_for('admin_reset_draw') }}" onsubmit="return confirm('ATENCIÓN: Vas a deshacer el sorteo. Se borrarán las asignaciones y las selecciones de equipos de todos los usuarios, pero se conservará tu lista de restricciones. ¿Deseas continuar?');">
+      <button type="submit" class="btn btn-danger">
+        Deshacer sorteo y reiniciar selecciones 🔄
+      </button>
+    </form>
+  {% else %}
+    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 16px;">
+      Al pulsar "Realizar sorteo", el algoritmo calculará un reparto válido respetando todas las restricciones y evitando ciclos de 2.
+    </p>
+
+    <!-- Opcional: pegar texto en bloque -->
+    <details style="margin-bottom: 16px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+      <summary style="font-weight: 600; cursor: pointer; color: var(--primary);">
+        + Importar restricciones en bloque (texto)
+      </summary>
+      <div style="margin-top: 10px;">
+        <form method="POST" action="{{ url_for('admin_draw') }}" id="bulkDrawForm">
+          <textarea name="forbidden_text" rows="4" style="width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 8px; font-family: monospace;" placeholder="Ejemplo:
+Jorge::Pedro
+Abraham -> Jorge"></textarea>
+          <div style="margin-top: 10px;">
+            <button type="submit" class="btn btn-primary">
+              Realizar sorteo (con texto añadido) 🎲
+            </button>
+          </div>
+        </form>
+      </div>
+    </details>
+
+    <form method="POST" action="{{ url_for('admin_draw') }}">
+      <button type="submit" class="btn btn-primary" style="padding: 12px 24px; font-size: 1rem;">
+        Realizar sorteo oficial 🎲
+      </button>
+    </form>
+  {% endif %}
+</div>
+
+{% endblock %}
